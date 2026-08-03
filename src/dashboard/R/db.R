@@ -14,9 +14,9 @@ fetch_analyses <- function() {
   res <- dbGetQuery(
     con,
     "
-    SELECT detection_id, image_path, animals_detected, species, confidence, detected_at
-    FROM analysis_results
-    ORDER BY detected_at DESC
+    SELECT *
+    FROM daily_analysis_result
+    ORDER BY start_time DESC
     "
   )
 
