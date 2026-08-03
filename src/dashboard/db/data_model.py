@@ -85,10 +85,10 @@ class Model(Base):
     description = Column(Text, nullable=True)  # additional information about the model
 
 
-class MLObjectDetection(Base):
-    """MLObjectDetection table"""
+class ObjectDetection(Base):
+    """ObjectDetection table"""
 
-    __tablename__ = "ml_object_detection"
+    __tablename__ = "object_detection"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     image_capture_id = Column(
@@ -126,14 +126,14 @@ class Taxonomy(Base):
     )
 
 
-class MLClassification(Base):
-    """MLClassification table"""
+class SpeciesClassification(Base):
+    """SpeciesClassification table"""
 
-    __tablename__ = "ml_classification"
+    __tablename__ = "species_classification"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    ml_object_detection_id = Column(
-        Integer, ForeignKey("ml_object_detection.id"), nullable=False, index=True
+    object_detection_id = Column(
+        Integer, ForeignKey("object_detection.id"), nullable=False, index=True
     )
     taxonomy_id = Column(Integer, ForeignKey("taxonomy.id"), nullable=False, index=True)
     clas_model_id = Column(
@@ -166,8 +166,8 @@ class DetectionCorrection(Base):
     __tablename__ = "detection_correction"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    ml_object_detection_id = Column(
-        Integer, ForeignKey("ml_object_detection.id"), nullable=False, index=True
+    object_detection_id = Column(
+        Integer, ForeignKey("object_detection.id"), nullable=False, index=True
     )
     user_id = Column(Integer, ForeignKey("app_user.id"), nullable=False, index=True)
     corrected_bbox = Column(
@@ -191,8 +191,8 @@ class ClassificationCorrection(Base):
     __tablename__ = "classification_correction"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    ml_classification_id = Column(
-        Integer, ForeignKey("ml_classification.id"), nullable=False, index=True
+    species_classification_id = Column(
+        Integer, ForeignKey("species_classification.id"), nullable=False, index=True
     )
     user_id = Column(Integer, ForeignKey("app_user.id"), nullable=False, index=True)
     corrected_taxonomy_id = Column(

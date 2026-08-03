@@ -21,6 +21,7 @@ dev = [
     "psycopg[binary]>=3.3.4",
     "sqlalchemy>=2.0.51",
     "geoalchemy2>=0.20.0",
+    "testcontainers>=4.15.0",
 ]
 
 [build-system]

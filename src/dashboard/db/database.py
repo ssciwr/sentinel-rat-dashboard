@@ -9,7 +9,7 @@ DATABASE_URL = os.getenv(
     "postgresql+psycopg://sentinel_user:sentinel_pass@db:5432/sentinel_db",
 )
 
-engine = create_engine(DATABASE_URL, echo=False, poll_pre_ping=True)
+engine = create_engine(DATABASE_URL, echo=False)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
