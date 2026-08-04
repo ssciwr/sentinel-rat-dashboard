@@ -1,5 +1,3 @@
-from sqlalchemy import func, select
-
 from dashboard.db import camera
 from dashboard.db.data_model import Camera, CameraLocationHistory
 

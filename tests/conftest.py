@@ -121,3 +121,26 @@ def camera_data():
             "status": "maintenance",
         },
     }
+
+
+@pytest.fixture(scope="function")
+def image_data():
+    return {
+        "create": {
+            "camera_id": 1,
+            "image_path": "/path/to/image.jpg",
+            "location": (7.1234, 50.5678),
+            "tobe_deleted": False,
+        },
+        "create_with_timestamps": {
+            "camera_id": 1,
+            "image_path": "/path/to/image_with_timestamps.jpg",
+            "location": (7.1234, 50.5678),
+            "captured_at": "2024-01-01 12:00:00",
+            "uploaded_at": "2024-01-01 12:05:00",
+            "tobe_deleted": False,
+        },
+        "update": {
+            "tobe_deleted": True,
+        },
+    }
