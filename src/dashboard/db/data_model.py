@@ -76,14 +76,14 @@ class ImageCapture(Base):
     )  # Flag for deletion when storage is full
 
 
-class Model(Base):
-    """Model table"""
+class MLModel(Base):
+    """MLModel table"""
 
-    __tablename__ = "model"
+    __tablename__ = "ml_model"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False)
-    version = Column(String(50), nullable=False)
+    version = Column(String(50), nullable=True)
     task = Column(String(50), nullable=False)  # e.g., 'detection', 'classification'
     description = Column(Text, nullable=True)  # additional information about the model
 
@@ -98,7 +98,7 @@ class ObjectDetection(Base):
         Integer, ForeignKey("image_capture.id"), nullable=False, index=True
     )
     det_model_id = Column(
-        Integer, ForeignKey("model.id"), nullable=False, index=True
+        Integer, ForeignKey("ml_model.id"), nullable=False, index=True
     )  # detection model used for this detection
     created_at = Column(
         DateTime(timezone=True), server_default=func.now(), index=True
@@ -140,7 +140,7 @@ class SpeciesClassification(Base):
     )
     taxonomy_id = Column(Integer, ForeignKey("taxonomy.id"), nullable=False, index=True)
     clas_model_id = Column(
-        Integer, ForeignKey("model.id"), nullable=False, index=True
+        Integer, ForeignKey("ml_model.id"), nullable=False, index=True
     )  # classification model used for this classification
     created_at = Column(
         DateTime(timezone=True), server_default=func.now(), index=True

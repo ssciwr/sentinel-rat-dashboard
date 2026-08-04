@@ -1,5 +1,6 @@
 from dashboard.db import camera
 from dashboard.db.data_model import Camera, CameraLocationHistory
+import pytest
 
 
 def test_add_camera_creates_camera_and_initial_history(
@@ -71,6 +72,28 @@ def test_update_camera_updates_fields_and_location_history(
     ) == point_str.format(
         camera_data["update"]["location"][0], camera_data["update"]["location"][1]
     )
+
+
+def test_update_camera_with_no_changes_returns_same_object(get_session, camera_data):
+    created_camera = camera.add_camera(get_session, **camera_data["create"])
+
+    updated_camera = camera.update_camera(get_session, created_camera.id)
+
+    assert updated_camera is not None
+    assert updated_camera.id == created_camera.id
+    assert updated_camera.name == created_camera.name
+    assert updated_camera.description == created_camera.description
+    assert updated_camera.status == created_camera.status
+
+    histories = camera.get_camera_location_history(get_session, created_camera.id)
+    assert len(histories) == 1  # No new history should be added
+
+
+def test_update_camera_with_unexpected_fields_raises_error(get_session, camera_data):
+    created_camera = camera.add_camera(get_session, **camera_data["create"])
+
+    with pytest.raises(ValueError):
+        camera.update_camera(get_session, created_camera.id, unexpected_field="value")
 
 
 def test_delete_helpers_remove_histories_and_camera(get_session, camera_data):

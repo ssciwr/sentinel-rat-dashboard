@@ -5,19 +5,6 @@ from sqlalchemy import create_engine, text, select, func
 from sqlalchemy.orm import sessionmaker
 
 from dashboard.db.data_model import Base
-from dashboard.db.data_model import (
-    Camera,
-    CameraLocationHistory,
-    ImageCapture,
-    Model,
-    ObjectDetection,
-    Taxonomy,
-    SpeciesClassification,
-    AppUser,
-    DetectionCorrection,
-    ClassificationCorrection,
-    DailyAnalysisResult,
-)
 
 from testcontainers.community.postgres import PostgresContainer
 
@@ -92,7 +79,7 @@ def clean_db(get_session):
                 camera_location_history,
                 camera,
                 image_capture,
-                model,
+                ml_model,
                 object_detection,
                 taxonomy,
                 species_classification,
@@ -142,5 +129,27 @@ def image_data():
         },
         "update": {
             "tobe_deleted": True,
+        },
+    }
+
+
+@pytest.fixture(scope="function")
+def ml_model_data():
+    return {
+        "create": {
+            "name": "Model 1",
+            "version": "v1.0",
+            "task": "detection",
+            "description": "First detection model",
+        },
+        "create_wo_optional_fields": {
+            "name": "Model 2",
+            "task": "classification",
+        },
+        "update": {
+            "name": "Model 1 Updated",
+            "version": "v1.1",
+            "task": "classification",
+            "description": "Updated classification model",
         },
     }
