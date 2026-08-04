@@ -216,7 +216,7 @@ class DailyAnalysisResult(Base):
     camera_id = Column(Integer, ForeignKey("camera.id"), nullable=False, index=True)
     start_time = Column(DateTime(timezone=True), nullable=False, index=True)
     end_time = Column(DateTime(timezone=True), nullable=False, index=True)
-    taxonomy_id = Column(Integer, ForeignKey("taxonomy.id"), nullable=True, index=True)
+    taxonomy_id = Column(Integer, ForeignKey("taxonomy.id"), nullable=False, index=True)
     taxonomy_count = Column(
         Integer, nullable=False
     )  # Total number of detected taxonomy instances in this period

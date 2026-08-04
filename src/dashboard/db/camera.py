@@ -67,7 +67,7 @@ def update_camera(session: Session, camera_id: int, **changes: Any) -> Camera | 
         return camera
 
     allowed_fields = {"name", "location", "description", "installation_date", "status"}
-    unexpected_fields = set(changes) - allowed_fields
+    unexpected_fields = set(changes.keys()) - allowed_fields
     if unexpected_fields:
         raise ValueError(f"Unsupported camera fields: {sorted(unexpected_fields)}")
 

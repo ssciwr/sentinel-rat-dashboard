@@ -5,17 +5,15 @@ import pytest
 
 def _add_image_capture(session, camera_data, image_data):
     # add camera first to satisfy foreign key constraint
-    camera.add_camera(session, **camera_data)
+    camera.add_camera(session, **camera_data["create"])
 
-    return image.add_image_capture(session, **image_data)
+    return image.add_image_capture(session, **image_data["create"])
 
 
 def test_add_image_capture_creates_row(
     get_session, image_data, location_text, point_str, camera_data
 ):
-    created_image = _add_image_capture(
-        get_session, camera_data["create"], image_data["create"]
-    )
+    created_image = _add_image_capture(get_session, camera_data, image_data)
 
     assert created_image.id is not None
     assert created_image.camera_id == image_data["create"]["camera_id"]
@@ -30,9 +28,7 @@ def test_add_image_capture_creates_row(
 def test_select_and_get_image_capture_return_saved_rows(
     get_session, image_data, camera_data
 ):
-    created_image = _add_image_capture(
-        get_session, camera_data["create"], image_data["create"]
-    )
+    created_image = _add_image_capture(get_session, camera_data, image_data)
 
     images = image.select_image_captures(get_session)
 
@@ -49,11 +45,9 @@ def test_select_and_get_image_capture_return_saved_rows(
 def test_get_images_by_filter_returns_filtered_rows(
     get_session, image_data, camera_data
 ):
-    created_image1 = _add_image_capture(
-        get_session, camera_data["create"], image_data["create"]
-    )
-    created_image2 = _add_image_capture(
-        get_session, camera_data["create"], image_data["create_with_timestamps"]
+    created_image1 = _add_image_capture(get_session, camera_data, image_data)
+    created_image2 = image.add_image_capture(
+        get_session, **image_data["create_with_timestamps"]
     )
 
     filtered_images = image.get_images_by_filter(
@@ -75,7 +69,7 @@ def test_get_images_by_filter_raises_value_error_when_no_filters(get_session):
 def test_get_images_by_filter_returns_empty_list_when_no_matches(
     get_session, image_data, camera_data
 ):
-    _add_image_capture(get_session, camera_data["create"], image_data["create"])
+    _add_image_capture(get_session, camera_data, image_data)
 
     filtered_images = image.get_images_by_filter(
         get_session, camera_id=image_data["create"]["camera_id"] + 1
@@ -91,9 +85,7 @@ def test_get_images_by_filter_returns_empty_list_when_no_rows(get_session):
 
 
 def test_mark_image_for_deletion(get_session, image_data, camera_data):
-    created_image = _add_image_capture(
-        get_session, camera_data["create"], image_data["create"]
-    )
+    created_image = _add_image_capture(get_session, camera_data, image_data)
 
     image.mark_image_for_deletion(get_session, created_image.id)
 
@@ -105,11 +97,9 @@ def test_mark_image_for_deletion(get_session, image_data, camera_data):
 def test_get_images_to_delete_returns_only_images_marked_for_deletion(
     get_session, image_data, camera_data
 ):
-    created_image1 = _add_image_capture(
-        get_session, camera_data["create"], image_data["create"]
-    )
-    created_image2 = _add_image_capture(
-        get_session, camera_data["create"], image_data["create_with_timestamps"]
+    created_image1 = _add_image_capture(get_session, camera_data, image_data)
+    created_image2 = image.add_image_capture(
+        get_session, **image_data["create_with_timestamps"]
     )
 
     images_to_delete = image.get_images_to_delete(get_session)
@@ -126,11 +116,9 @@ def test_get_images_to_delete_returns_only_images_marked_for_deletion(
 def test_get_images_in_period_returns_images_within_time_range(
     get_session, image_data, camera_data
 ):
-    created_image1 = _add_image_capture(
-        get_session, camera_data["create"], image_data["create"]
-    )
-    created_image2 = _add_image_capture(
-        get_session, camera_data["create"], image_data["create_with_timestamps"]
+    created_image1 = _add_image_capture(get_session, camera_data, image_data)
+    created_image2 = image.add_image_capture(
+        get_session, **image_data["create_with_timestamps"]
     )
 
     start_time = created_image2.captured_at  # 2024
@@ -152,9 +140,7 @@ def test_get_images_in_period_returns_images_within_time_range(
 
 
 def test_delete_image_capture(get_session, image_data, camera_data):
-    created_image = _add_image_capture(
-        get_session, camera_data["create"], image_data["create"]
-    )
+    created_image = _add_image_capture(get_session, camera_data, image_data)
 
     assert image.delete_image_capture(get_session, created_image.id) is True
 

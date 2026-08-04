@@ -8,6 +8,8 @@ from dashboard.db.data_model import Base
 
 from testcontainers.community.postgres import PostgresContainer
 
+from datetime import datetime, UTC
+
 # for local docker desktop,
 # environ["DOCKER_HOST"] is "unix:///home/[user]/.docker/desktop/docker.sock"
 
@@ -123,8 +125,8 @@ def image_data():
             "camera_id": 1,
             "image_path": "/path/to/image_with_timestamps.jpg",
             "location": (7.1234, 50.5678),
-            "captured_at": "2024-01-01 12:00:00",
-            "uploaded_at": "2024-01-01 12:05:00",
+            "captured_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
+            "uploaded_at": datetime(2024, 1, 1, 12, 5, 0, tzinfo=UTC),
             "tobe_deleted": False,
         },
         "update": {
@@ -151,5 +153,118 @@ def ml_model_data():
             "version": "v1.1",
             "task": "classification",
             "description": "Updated classification model",
+        },
+    }
+
+
+@pytest.fixture(scope="function")
+def object_detection_data():
+    return {
+        "create": {
+            "image_capture_id": 1,
+            "det_model_id": 1,
+            "confidence": 0.95,
+            "bbox": {"x": 100, "y": 100, "width": 50, "height": 50},
+            "detected_class": "animal",
+        },
+        "create_another": {
+            "image_capture_id": 1,
+            "det_model_id": 1,
+            "confidence": 0.88,
+            "bbox": {"x": 150, "y": 150, "width": 60, "height": 60},
+            "detected_class": "vehicle",
+        },
+        "update": {
+            "confidence": 0.98,
+            "detected_class": "rodent",
+        },
+    }
+
+
+@pytest.fixture(scope="function")
+def taxonomy_data():
+    return {
+        "create": {
+            "species": "Rattus norvegicus",
+            "genus": "Rattus",
+            "family": "Muridae",
+        },
+        "create_with_optional_fields": {
+            "species": "Mus musculus",
+            "genus": "Mus",
+            "family": "Muridae",
+            "kingdom": "Animalia",
+            "phylum": "Chordata",
+            "class_name": "Mammalia",
+            "order": "Rodentia",
+            "common_name": "House mouse",
+        },
+        "update": {
+            "common_name": "Updated common name",
+        },
+    }
+
+
+@pytest.fixture(scope="function")
+def species_classification_data():
+    return {
+        "create": {
+            "object_detection_id": 1,
+            "taxonomy_id": 1,
+            "clas_model_id": 1,
+            "confidence": 0.92,
+        },
+        "create_another": {
+            "object_detection_id": 1,
+            "taxonomy_id": 1,
+            "clas_model_id": 1,
+            "confidence": 0.85,
+        },
+        "update": {
+            "confidence": 0.99,
+        },
+    }
+
+
+@pytest.fixture(scope="function")
+def app_user_data():
+    return {
+        "create": {
+            "username": "testuser",
+            "full_name": "Test User",
+            "is_active": True,
+        },
+        "create_wo_optional_fields": {
+            "username": "testuser2",
+        },
+        "update": {
+            "full_name": "Updated Test User",
+            "is_active": False,
+        },
+    }
+
+
+@pytest.fixture(scope="function")
+def daily_analysis_result_data():
+    return {
+        "create": {
+            "camera_id": 1,
+            "start_time": datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC),
+            "end_time": datetime(2024, 1, 2, 0, 0, 0, tzinfo=UTC),
+            "taxonomy_count": 10,
+            "avg_confidence": 0.85,
+            "taxonomy_id": 1,
+        },
+        "create_another": {
+            "camera_id": 1,
+            "start_time": datetime(2024, 1, 2, 0, 0, 0, tzinfo=UTC),
+            "end_time": datetime(2024, 1, 3, 0, 0, 0, tzinfo=UTC),
+            "taxonomy_count": 15,
+            "avg_confidence": 0.80,
+            "taxonomy_id": 2,
+        },
+        "update": {
+            "taxonomy_count": 20,
+            "avg_confidence": 0.90,
         },
     }

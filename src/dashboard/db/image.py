@@ -62,7 +62,7 @@ def get_images_by_filter(session: Session, **filters: Any) -> list[ImageCapture]
             "To select all images, use `select_image_captures()` instead."
         )
 
-    statement = select(ImageCapture).filter_by(**filters)
+    statement = select(ImageCapture).filter_by(**filters).order_by(ImageCapture.id)
     return list(session.execute(statement).scalars().all())
 
 
