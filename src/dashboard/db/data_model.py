@@ -71,6 +71,9 @@ class ImageCapture(Base):
     location = Column(
         Geometry(geometry_type="POINT", srid=4326), nullable=False, index=True
     )  # Fetched from the camera's location at the time of capture, since camera might be moved
+    tobe_deleted = Column(
+        Boolean, nullable=False, default=False
+    )  # Flag for deletion when storage is full
 
 
 class Model(Base):

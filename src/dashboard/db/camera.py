@@ -1,4 +1,4 @@
-"""CRUD helpers for the camera and camera_location_history table."""
+"""CRUD helpers for the camera and camera_location_history tables"""
 
 from __future__ import annotations
 
@@ -8,34 +8,7 @@ from sqlalchemy import select, DateTime, func
 from sqlalchemy.orm import Session
 
 from .data_model import Camera, CameraLocationHistory
-
-CRS = 4326
-STR_POINT = "SRID={};POINT({} {})"
-
-
-def _normalize_location(location: Any) -> str:
-    """Convert a location to a string in the format 'SRID=4326;POINT(lon lat)'."""
-
-    if isinstance(location, str) and location.startswith("SRID="):
-        return location
-
-    try:
-        lon, lat = location
-    except Exception:
-        raise ValueError(
-            f"Invalid location: {location}. Must be a string or a (lon, lat) tuple."
-        )
-
-    return STR_POINT.format(CRS, lon, lat)
-
-
-def _commit(session: Session) -> None:
-    """Commit the session, rolling back on error."""
-    try:
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
+from . import utils
 
 
 # CRUD helpers for the camera table
@@ -52,7 +25,7 @@ def add_camera(
 
     camera = Camera(
         name=name,
-        location=_normalize_location(location),
+        location=utils.normalize_location(location),
         description=description,
         status=status,
     )
@@ -61,7 +34,7 @@ def add_camera(
         camera.installation_date = installation_date
 
     session.add(camera)
-    _commit(session)
+    utils.commit(session)
     session.refresh(camera)  # get generated fields like ID and installation_date
 
     # update the camera_location_history table with the initial location
@@ -99,7 +72,7 @@ def update_camera(session: Session, camera_id: int, **changes: Any) -> Camera | 
         raise ValueError(f"Unsupported camera fields: {sorted(unexpected_fields)}")
 
     if "location" in changes:
-        new_location = _normalize_location(changes["location"])
+        new_location = utils.normalize_location(changes["location"])
 
         if new_location != camera.location:
             # Update the camera_location_history table if the location has changed
@@ -110,7 +83,7 @@ def update_camera(session: Session, camera_id: int, **changes: Any) -> Camera | 
     for field_name, value in changes.items():
         setattr(camera, field_name, value)
 
-    _commit(session)
+    utils.commit(session)
     session.refresh(camera)
     return camera
 
@@ -123,7 +96,7 @@ def delete_camera(session: Session, camera_id: int) -> bool:
         return False
 
     session.delete(camera)
-    _commit(session)
+    utils.commit(session)
     return True
 
 
@@ -135,7 +108,7 @@ def add_camera_location_history(
 
     history = CameraLocationHistory(
         camera_id=camera_id,
-        location=_normalize_location(location),
+        location=utils.normalize_location(location),
         valid_to=None,
     )
 
@@ -143,7 +116,7 @@ def add_camera_location_history(
         history.valid_from = valid_from
 
     session.add(history)
-    _commit(session)
+    utils.commit(session)
     session.refresh(history)
     return history
 
@@ -174,7 +147,7 @@ def update_camera_location_history(
         .first()
     )
 
-    new_location_str = _normalize_location(new_location)
+    new_location_str = utils.normalize_location(new_location)
 
     if current_history is not None:
         # If the location hasn't changed, do nothing
@@ -192,7 +165,7 @@ def update_camera_location_history(
         valid_to=None,
     )
     session.add(new_history)
-    _commit(session)
+    utils.commit(session)
     session.refresh(new_history)
     return new_history
 
@@ -212,5 +185,5 @@ def delete_camera_location_history(session: Session, camera_id: int) -> bool:
     for history in histories:
         session.delete(history)
 
-    _commit(session)
+    utils.commit(session)
     return True

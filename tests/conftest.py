@@ -1,7 +1,7 @@
 # tests/conftest.py
 
 import pytest
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, select, func
 from sqlalchemy.orm import sessionmaker
 
 from dashboard.db.data_model import Base
@@ -25,11 +25,24 @@ from testcontainers.community.postgres import PostgresContainer
 # environ["DOCKER_HOST"] is "unix:///home/[user]/.docker/desktop/docker.sock"
 
 
+@pytest.fixture
+def point_str():
+    return "POINT({} {})"
+
+
+@pytest.fixture
+def location_text():
+    def _location_text(session, table, row_id):
+        statement = select(func.ST_AsText(table.location)).where(table.id == row_id)
+        return session.execute(statement).scalar_one()
+
+    return _location_text
+
+
 def _psycopg_url(connection_url):
-    return (
-        connection_url.replace("postgresql+psycopg2://", "postgresql+psycopg://")
-        .replace("postgresql://", "postgresql+psycopg://")
-    )
+    return connection_url.replace(
+        "postgresql+psycopg2://", "postgresql+psycopg://"
+    ).replace("postgresql://", "postgresql+psycopg://")
 
 
 @pytest.fixture(scope="module")
