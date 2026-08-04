@@ -4,186 +4,205 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import select, DateTime, func
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from .data_model import Camera, CameraLocationHistory
+from dashboard.db.crud import CRUDBase
 from . import utils
+from datetime import datetime
 
 
 # CRUD helpers for the camera table
-def add_camera(
-    session: Session,
-    *,
-    name: str,
-    location: Any,
-    description: str | None = None,
-    installation_date: DateTime | None = None,
-    status: str = "active",
-) -> Camera:
-    """Insert a new camera row and return the persisted object."""
+class CameraCRUD(CRUDBase[Camera]):
+    """CRUD helper for the camera table"""
 
-    camera = Camera(
-        name=name,
-        location=utils.normalize_location(location),
-        description=description,
-        status=status,
-    )
+    def __init__(self, location_history_crud: CameraLocationHistoryCRUD):
+        super().__init__(Camera)
+        self.location_history_crud = location_history_crud
 
-    if installation_date is not None:
-        camera.installation_date = installation_date
+    def add(
+        self,
+        session: Session,
+        *,
+        name: str,
+        location: Any,
+        description: str | None = None,
+        installation_date: datetime | None = None,
+        status: str = "active",
+    ) -> Camera:
+        """Insert a new camera row and return the persisted object."""
 
-    session.add(camera)
-    utils.commit(session)
-    session.refresh(camera)  # get generated fields like ID and installation_date
+        camera = Camera(
+            name=name,
+            location=utils.normalize_location(location),
+            description=description,
+            status=status,
+        )
 
-    # update the camera_location_history table with the initial location
-    add_camera_location_history(session, camera.id, location, camera.installation_date)
+        if installation_date is not None:
+            camera.installation_date = installation_date
 
-    return camera
+        session.add(camera)
+        session.flush()  # get camera.id without committing
 
+        # add an entry to the camera_location_history table
+        self.location_history_crud.add_location_change(
+            session,
+            camera_id=camera.id,
+            location=location,
+            valid_from=camera.installation_date,
+            commit=False,  # commit after both camera and history are added
+            refresh=False,  # refresh after commit
+        )
 
-def select_cameras(session: Session) -> list[Camera]:
-    """Return all camera rows ordered by primary key."""
+        utils.commit(session)
+        session.refresh(camera)  # get generated fields like ID and installation_date
 
-    statement = select(Camera).order_by(Camera.id)
-    return list(session.execute(statement).scalars().all())
-
-
-def get_camera(session: Session, camera_id: int) -> Camera | None:
-    """Return one camera row by primary key."""
-
-    return session.get(Camera, camera_id)
-
-
-def update_camera(session: Session, camera_id: int, **changes: Any) -> Camera | None:
-    """Update a camera row and return the refreshed object, or None if missing."""
-
-    camera = session.get(Camera, camera_id)
-    if camera is None:
-        return None
-
-    if not changes:
         return camera
 
-    allowed_fields = {"name", "location", "description", "installation_date", "status"}
-    unexpected_fields = set(changes.keys()) - allowed_fields
-    if unexpected_fields:
-        raise ValueError(f"Unsupported camera fields: {sorted(unexpected_fields)}")
+    def update(self, session: Session, camera_id: int, **changes: Any) -> Camera | None:
+        """Update a camera row and return the refreshed object, or None if missing."""
 
-    if "location" in changes:
-        new_location = utils.normalize_location(changes["location"])
+        camera = session.get(Camera, camera_id)
+        if camera is None:
+            return None
 
-        if new_location != camera.location:
-            # Update the camera_location_history table if the location has changed
-            update_camera_location_history(session, camera_id, new_location)
+        allowed_fields = {
+            "name",
+            "location",
+            "description",
+            "installation_date",
+            "status",
+        }
+        unexpected_fields = set(changes.keys()) - allowed_fields
+        if unexpected_fields:
+            raise ValueError(
+                f"Unexpected fields for update: {unexpected_fields}. "
+                f"Allowed fields are: {allowed_fields}."
+            )
 
-            changes["location"] = new_location
+        if "location" in changes:
+            new_location = utils.normalize_location(changes["location"])
+            old_location = utils.location_to_text(session, Camera, camera_id)
 
-    for field_name, value in changes.items():
-        setattr(camera, field_name, value)
+            if new_location != old_location:
+                # Add a new entry to the camera_location_history table for the new location
+                self.location_history_crud.add_location_change(
+                    session,
+                    camera_id=camera_id,
+                    location=changes["location"],
+                    commit=False,
+                    refresh=False,
+                )
 
-    utils.commit(session)
-    session.refresh(camera)
-    return camera
+                changes["location"] = new_location
 
-
-def delete_camera(session: Session, camera_id: int) -> bool:
-    """Delete a camera row. Returns True when a row was removed."""
-
-    camera = session.get(Camera, camera_id)
-    if camera is None:
-        return False
-
-    session.delete(camera)
-    utils.commit(session)
-    return True
+        return super().update(
+            session,
+            camera_id,
+            allowed_fields=allowed_fields,
+            **changes,
+        )
 
 
 # CRUD helpers for the camera_location_history table
-def add_camera_location_history(
-    session: Session, camera_id: int, location: Any, valid_from: DateTime | None = None
-) -> CameraLocationHistory:
-    """Insert a new camera_location_history row and return the persisted object."""
+class CameraLocationHistoryCRUD(CRUDBase[CameraLocationHistory]):
+    """CRUD helper for the camera_location_history table"""
 
-    history = CameraLocationHistory(
-        camera_id=camera_id,
-        location=utils.normalize_location(location),
-        valid_to=None,
-    )
+    def __init__(self):
+        super().__init__(CameraLocationHistory)
 
-    if valid_from is not None:
-        history.valid_from = valid_from
+    def add_location_change(
+        self,
+        session: Session,
+        *,
+        camera_id: int,
+        location: Any,
+        valid_from: datetime | None = None,
+        commit: bool = True,
+        refresh: bool = True,
+    ) -> CameraLocationHistory:
+        """Insert a new camera_location_history row and return the persisted object.
+        If the camera_id already has row(s) in the table,
+        the valid_to of the most recent row will be updated to now() before inserting the new row.
+        """
 
-    session.add(history)
-    utils.commit(session)
-    session.refresh(history)
-    return history
+        new_history = CameraLocationHistory(
+            camera_id=camera_id,
+            location=utils.normalize_location(location),
+            valid_to=None,
+        )
+
+        if valid_from is not None:
+            new_history.valid_from = valid_from
+
+        # check if there is an existing history entry for this camera
+        self.update_valid_to(session, camera_id, commit=False, refresh=False)
+
+        session.add(new_history)
+        if commit:
+            utils.commit(session)
+        if refresh:
+            session.refresh(new_history)  # get generated fields like ID
+
+        return new_history
+
+    def get_by_camera(
+        self, session: Session, camera_id: int
+    ) -> list[CameraLocationHistory]:
+        """Return all camera_location_history rows for a given camera, ordered by valid_from."""
+
+        statement = (
+            select(CameraLocationHistory)
+            .where(CameraLocationHistory.camera_id == camera_id)
+            .order_by(CameraLocationHistory.valid_from.desc())
+        )
+        return list(session.execute(statement).scalars().all())
+
+    def update_valid_to(
+        self,
+        session: Session,
+        camera_id: int,
+        commit: bool = True,
+        refresh: bool = True,
+    ) -> CameraLocationHistory | None:
+        """Update the valid_to of the most recent camera_location_history row for a given camera,"""
+
+        statement = (
+            select(CameraLocationHistory)
+            .where(CameraLocationHistory.camera_id == camera_id)
+            .order_by(CameraLocationHistory.valid_from.desc())
+            .limit(1)
+        )
+
+        recent_history = session.execute(statement).scalars().first()
+
+        if recent_history is None:
+            return None
+
+        recent_history.valid_to = func.now()
+        if commit:
+            utils.commit(session)
+        if refresh:
+            session.refresh(recent_history)
+        return recent_history
+
+    def delete_camera_location_history(self, session: Session, camera_id: int) -> bool:
+        """Delete all camera_location_history rows for a given camera. Returns True when rows were removed."""
+
+        histories = self.get_by_camera(session, camera_id)
+
+        if not histories:
+            return False
+
+        for history in histories:
+            session.delete(history)
+
+        utils.commit(session)
+        return True
 
 
-def get_camera_location_history(
-    session: Session, camera_id: int
-) -> list[CameraLocationHistory]:
-    """Return all camera_location_history rows for a given camera, ordered by valid_from."""
-
-    statement = (
-        select(CameraLocationHistory)
-        .filter(CameraLocationHistory.camera_id == camera_id)
-        .order_by(CameraLocationHistory.valid_from)
-    )
-    return list(session.execute(statement).scalars().all())
-
-
-def update_camera_location_history(
-    session: Session, camera_id: int, new_location: Any
-) -> CameraLocationHistory | None:
-    """Update the camera_location_history table when a camera's location changes."""
-
-    # Get the current location history for this camera
-    current_history = (
-        session.query(CameraLocationHistory)
-        .filter(CameraLocationHistory.camera_id == camera_id)
-        .order_by(CameraLocationHistory.valid_from.desc())
-        .first()
-    )
-
-    new_location_str = utils.normalize_location(new_location)
-
-    if current_history is not None:
-        # If the location hasn't changed, do nothing
-        if current_history.location == new_location_str:
-            return current_history
-
-        # Update the valid_to of the current history entry
-        current_history.valid_to = func.now()
-
-    # Insert a new history entry for the new location
-    new_history = CameraLocationHistory(
-        camera_id=camera_id,
-        location=new_location_str,
-        valid_from=func.now(),
-        valid_to=None,
-    )
-    session.add(new_history)
-    utils.commit(session)
-    session.refresh(new_history)
-    return new_history
-
-
-def delete_camera_location_history(session: Session, camera_id: int) -> bool:
-    """Delete all camera_location_history rows for a given camera. Returns True when rows were removed."""
-
-    histories = (
-        session.query(CameraLocationHistory)
-        .filter(CameraLocationHistory.camera_id == camera_id)
-        .all()
-    )
-
-    if not histories:
-        return False
-
-    for history in histories:
-        session.delete(history)
-
-    utils.commit(session)
-    return True
+# Create instances of the CRUD helpers for use in other modules
+camera_location_history_crud = CameraLocationHistoryCRUD()
+camera_crud = CameraCRUD(location_history_crud=camera_location_history_crud)

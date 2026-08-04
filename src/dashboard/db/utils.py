@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Any
 from sqlalchemy.orm import Session
+from sqlalchemy import select, func
 
 CRS = 4326
 STR_POINT = "SRID={};POINT({} {})"
@@ -20,6 +21,11 @@ def normalize_location(location: Any) -> str:
         )
 
     return STR_POINT.format(CRS, lon, lat)
+
+
+def location_to_text(session, table, row_id):
+    statement = select(func.ST_AsText(table.location)).where(table.id == row_id)
+    return session.execute(statement).scalar_one()
 
 
 def commit(session: Session) -> None:

@@ -10,6 +10,31 @@ from testcontainers.community.postgres import PostgresContainer
 
 from datetime import datetime, UTC
 
+from dashboard.db import (
+    camera,
+    taxonomy,
+    analysis_result,
+    ml_model,
+    detection,
+    classification,
+    app_user,
+    image,
+)
+
+from dashboard.db.data_model import (
+    Camera,
+    CameraLocationHistory,
+    Taxonomy,
+    DailyAnalysisResult,
+    MLModel,
+    ObjectDetection,
+    SpeciesClassification,
+    AppUser,
+    ImageCapture,
+    DetectionCorrection,
+    ClassificationCorrection,
+)
+
 # for local docker desktop,
 # environ["DOCKER_HOST"] is "unix:///home/[user]/.docker/desktop/docker.sock"
 
@@ -110,6 +135,14 @@ def camera_data():
             "status": "maintenance",
         },
     }
+
+
+@pytest.fixture
+def create_camera(get_session, camera_data):
+    def _create_camera():
+        return camera.add_camera(get_session, **camera_data["create"])
+
+    return _create_camera
 
 
 @pytest.fixture(scope="function")
@@ -267,4 +300,13 @@ def daily_analysis_result_data():
             "taxonomy_count": 20,
             "avg_confidence": 0.90,
         },
+    }
+
+
+@pytest.fixture
+def crud_factories(
+    create_camera,
+):
+    return {
+        Camera: create_camera,
     }
