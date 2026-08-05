@@ -77,12 +77,29 @@ class CRUDBase(Generic[ModelType]):
         if not changes:
             return instance
 
-        if allowed_fields is not None:
-            unexpected_fields = set(changes.keys()) - allowed_fields
-            if unexpected_fields:
+        # get all possible fields from the model's columns,
+        # except primary key and foreign key fields
+        all_non_pk_fk_fields = {
+            col.name
+            for col in self.model.__table__.columns
+            if not col.primary_key and not col.foreign_keys
+        }
+
+        if allowed_fields is None:
+            allowed_fields = all_non_pk_fk_fields
+        else:
+            # ensure allowed_fields is a subset of all_non_pk_fk_fields
+            invalid_fields = set(allowed_fields) - all_non_pk_fk_fields
+            if invalid_fields:
                 raise ValueError(
-                    f"Unsupported {self.model.__tablename__} fields: {sorted(unexpected_fields)}"
+                    f"Invalid allowed fields for {self.model.__tablename__}: {sorted(invalid_fields)}"
                 )
+
+        unexpected_fields = set(changes.keys()) - allowed_fields
+        if unexpected_fields:
+            raise ValueError(
+                f"Unsupported {self.model.__tablename__} fields: {sorted(unexpected_fields)}"
+            )
 
         for key, value in changes.items():
             setattr(instance, key, value)

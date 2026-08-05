@@ -10,7 +10,7 @@ from testcontainers.community.postgres import PostgresContainer
 
 from datetime import datetime, UTC
 
-from dashboard.db import camera_crud, image_crud
+from dashboard.db import camera_crud, image_crud, ml_model_crud
 
 # for local docker desktop,
 # environ["DOCKER_HOST"] is "unix:///home/[user]/.docker/desktop/docker.sock"
@@ -191,7 +191,7 @@ def ml_model_data():
             "task": "detection",
             "description": "First detection model",
         },
-        "create_wo_optional_fields": {
+        "create_another": {
             "name": "Model 2",
             "task": "classification",
         },
@@ -202,6 +202,24 @@ def ml_model_data():
             "description": "Updated classification model",
         },
     }
+
+
+@pytest.fixture(scope="function")
+def created_ml_model(get_session, ml_model_data):
+    def _create_ml_model():
+        return ml_model_crud.add(get_session, **ml_model_data["create"])
+
+    return _create_ml_model
+
+
+@pytest.fixture(scope="function")
+def created_multi_ml_models(get_session, ml_model_data, created_ml_model):
+    def _create_ml_models():
+        created_ml_model()
+        ml_model_crud.add(get_session, **ml_model_data["create_another"])
+        return ml_model_crud.select(get_session)
+
+    return _create_ml_models
 
 
 @pytest.fixture(scope="function")
