@@ -1,19 +1,12 @@
-from dashboard.db import image, camera
+from dashboard.db import image_crud
 from dashboard.db.data_model import ImageCapture
 import pytest
 
 
-def _add_image_capture(session, camera_data, image_data):
-    # add camera first to satisfy foreign key constraint
-    camera.add_camera(session, **camera_data["create"])
-
-    return image.add_image_capture(session, **image_data["create"])
-
-
 def test_add_image_capture_creates_row(
-    get_session, image_data, location_text, point_str, camera_data
+    get_session, created_image, image_data, location_text, point_str
 ):
-    created_image = _add_image_capture(get_session, camera_data, image_data)
+    created_image = created_image()
 
     assert created_image.id is not None
     assert created_image.camera_id == image_data["create"]["camera_id"]
@@ -25,124 +18,64 @@ def test_add_image_capture_creates_row(
     )
 
 
-def test_select_and_get_image_capture_return_saved_rows(
-    get_session, image_data, camera_data
-):
-    created_image = _add_image_capture(get_session, camera_data, image_data)
+def test_mark_image_for_deletion(get_session, created_image):
+    created_image = created_image()
 
-    images = image.select_image_captures(get_session)
+    image_crud.mark_image_for_deletion(get_session, created_image.id)
 
-    assert len(images) == 1
-    assert images[0].id == created_image.id
-    assert images[0].camera_id == image_data["create"]["camera_id"]
-
-    fetched_image = image.get_image_capture(get_session, created_image.id)
-    assert fetched_image is not None
-    assert fetched_image.id == created_image.id
-    assert fetched_image.image_path == image_data["create"]["image_path"]
-
-
-def test_get_images_by_filter_returns_filtered_rows(
-    get_session, image_data, camera_data
-):
-    created_image1 = _add_image_capture(get_session, camera_data, image_data)
-    created_image2 = image.add_image_capture(
-        get_session, **image_data["create_with_timestamps"]
-    )
-
-    filtered_images = image.get_images_by_filter(
-        get_session, camera_id=image_data["create"]["camera_id"]
-    )
-
-    assert len(filtered_images) == 2
-    assert filtered_images[0].id == created_image1.id
-    assert filtered_images[0].camera_id == image_data["create"]["camera_id"]
-    assert filtered_images[1].id == created_image2.id
-    assert filtered_images[1].camera_id == image_data["create"]["camera_id"]
-
-
-def test_get_images_by_filter_raises_value_error_when_no_filters(get_session):
-    with pytest.raises(ValueError):
-        image.get_images_by_filter(get_session)
-
-
-def test_get_images_by_filter_returns_empty_list_when_no_matches(
-    get_session, image_data, camera_data
-):
-    _add_image_capture(get_session, camera_data, image_data)
-
-    filtered_images = image.get_images_by_filter(
-        get_session, camera_id=image_data["create"]["camera_id"] + 1
-    )
-
-    assert len(filtered_images) == 0
-
-
-def test_get_images_by_filter_returns_empty_list_when_no_rows(get_session):
-    filtered_images = image.get_images_by_filter(get_session, camera_id=1)
-
-    assert len(filtered_images) == 0
-
-
-def test_mark_image_for_deletion(get_session, image_data, camera_data):
-    created_image = _add_image_capture(get_session, camera_data, image_data)
-
-    image.mark_image_for_deletion(get_session, created_image.id)
-
-    updated_image = image.get_image_capture(get_session, created_image.id)
+    updated_image = image_crud.get(get_session, created_image.id)
     assert updated_image is not None
     assert updated_image.tobe_deleted is True
 
 
 def test_get_images_to_delete_returns_only_images_marked_for_deletion(
-    get_session, image_data, camera_data
+    get_session, created_multi_images
 ):
-    created_image1 = _add_image_capture(get_session, camera_data, image_data)
-    created_image2 = image.add_image_capture(
-        get_session, **image_data["create_with_timestamps"]
-    )
+    multi_images = created_multi_images()
+    created_image1 = multi_images[0]
 
-    images_to_delete = image.get_images_to_delete(get_session)
+    images_to_delete = image_crud.get_images_to_delete(get_session)
     assert len(images_to_delete) == 0
 
-    image.mark_image_for_deletion(get_session, created_image1.id)
+    image_crud.mark_image_for_deletion(get_session, created_image1.id)
 
-    images_to_delete = image.get_images_to_delete(get_session)
+    images_to_delete = image_crud.get_images_to_delete(get_session)
     assert len(images_to_delete) == 1
     assert images_to_delete[0].id == created_image1.id
     assert images_to_delete[0].tobe_deleted is True
 
 
 def test_get_images_in_period_returns_images_within_time_range(
-    get_session, image_data, camera_data
+    get_session, created_multi_images
 ):
-    created_image1 = _add_image_capture(get_session, camera_data, image_data)
-    created_image2 = image.add_image_capture(
-        get_session, **image_data["create_with_timestamps"]
-    )
+    multi_images = created_multi_images()
+    created_image1 = multi_images[0]
+    created_image2 = multi_images[1]
 
     start_time = created_image2.captured_at  # 2024
     end_time = (
         created_image1.captured_at
     )  # image1 got timestamp from server default, which is after 2024
 
-    images_in_period = image.get_images_in_period(get_session, start_time, end_time)
+    images_in_period = image_crud.get_images_in_period(
+        get_session, start_time, end_time
+    )
 
     assert len(images_in_period) == 2
     assert images_in_period[0].id == created_image1.id
     assert images_in_period[1].id == created_image2.id
 
-    images_in_period = image.get_images_in_period(
+    images_in_period = image_crud.get_images_in_period(
         get_session, start_time=end_time, end_time=None
     )
     assert len(images_in_period) == 1
     assert images_in_period[0].id == created_image1.id
 
 
-def test_delete_image_capture(get_session, image_data, camera_data):
-    created_image = _add_image_capture(get_session, camera_data, image_data)
+def test_refuse_direct_update(get_session, created_image, image_data):
+    created_image = created_image()
 
-    assert image.delete_image_capture(get_session, created_image.id) is True
-
-    deleted_image = image.get_image_capture(get_session, created_image.id)
-    assert deleted_image is None
+    with pytest.raises(NotImplementedError):
+        image_crud.update(
+            get_session, created_image.id, {"image_path": "/new/path/to/image.jpg"}
+        )

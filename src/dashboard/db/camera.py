@@ -113,6 +113,15 @@ class CameraLocationHistoryCRUD(CRUDBase[CameraLocationHistory]):
     def __init__(self):
         super().__init__(CameraLocationHistory)
 
+    def add(self, *arg, **kwargs):
+        """This method is not intended to be used directly.
+        Use add_location_change() instead."""
+
+        raise NotImplementedError(
+            "Direct addition to camera_location_history is not allowed. "
+            "Use add_location_change() to add a new location change."
+        )
+
     def add_location_change(
         self,
         session: Session,
@@ -137,8 +146,11 @@ class CameraLocationHistoryCRUD(CRUDBase[CameraLocationHistory]):
         if valid_from is not None:
             new_history.valid_from = valid_from
 
-        # check if there is an existing history entry for this camera
-        self.update_valid_to(session, camera_id, commit=False, refresh=False)
+        # update the most recent history's valid_to to now()
+        # before adding the new history
+        self.update_valid_to_most_recent_history(
+            session, camera_id, commit=False, refresh=False
+        )
 
         session.add(new_history)
         if commit:
@@ -160,7 +172,16 @@ class CameraLocationHistoryCRUD(CRUDBase[CameraLocationHistory]):
         )
         return list(session.execute(statement).scalars().all())
 
-    def update_valid_to(
+    def update(self, *arg, **kwargs):
+        """This method is not intended to be used directly.
+        Use add_location_change() instead."""
+
+        raise NotImplementedError(
+            "Direct updates to camera_location_history are not allowed. "
+            "Use add_location_change() to add a new location change."
+        )
+
+    def update_valid_to_most_recent_history(
         self,
         session: Session,
         camera_id: int,
@@ -188,8 +209,19 @@ class CameraLocationHistoryCRUD(CRUDBase[CameraLocationHistory]):
             session.refresh(recent_history)
         return recent_history
 
-    def delete_camera_location_history(self, session: Session, camera_id: int) -> bool:
-        """Delete all camera_location_history rows for a given camera. Returns True when rows were removed."""
+    def delete(self, *arg, **kwargs):
+        """This method is not intended to be used directly.
+        Use delete_old_camera_history() instead."""
+
+        raise NotImplementedError(
+            "Direct deletion of camera_location_history rows is not allowed. "
+            "Use delete_old_camera_history() to remove old rows."
+        )
+
+    def delete_old_camera_history(self, session: Session, camera_id: int) -> bool:
+        """Delete old camera_location_history rows for a given camera.
+        Keep the most recent row (with valid_to = None) and delete all older rows.
+        Returns True when rows were removed."""
 
         histories = self.get_by_camera(session, camera_id)
 
@@ -197,7 +229,12 @@ class CameraLocationHistoryCRUD(CRUDBase[CameraLocationHistory]):
             return False
 
         for history in histories:
-            session.delete(history)
+            if history.valid_to is not None:
+                session.delete(history)
+
+        assert (
+            len(self.get_by_camera(session, camera_id)) == 1
+        )  # only the most recent row remains
 
         utils.commit(session)
         return True

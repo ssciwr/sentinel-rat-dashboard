@@ -10,30 +10,7 @@ from testcontainers.community.postgres import PostgresContainer
 
 from datetime import datetime, UTC
 
-from dashboard.db import (
-    camera,
-    taxonomy,
-    analysis_result,
-    ml_model,
-    detection,
-    classification,
-    app_user,
-    image,
-)
-
-from dashboard.db.data_model import (
-    Camera,
-    CameraLocationHistory,
-    Taxonomy,
-    DailyAnalysisResult,
-    MLModel,
-    ObjectDetection,
-    SpeciesClassification,
-    AppUser,
-    ImageCapture,
-    DetectionCorrection,
-    ClassificationCorrection,
-)
+from dashboard.db import camera_crud, image_crud
 
 # for local docker desktop,
 # environ["DOCKER_HOST"] is "unix:///home/[user]/.docker/desktop/docker.sock"
@@ -128,6 +105,13 @@ def camera_data():
             "description": "Main entrance camera",
             "status": "active",
         },
+        "create_another": {
+            "name": "Camera 2",
+            "location": (7.5678, 50.1234),
+            "description": "Backyard camera",
+            "status": "inactive",
+            "installation_date": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
+        },
         "update": {
             "name": "Camera 1 Updated",
             "location": (7.2234, 50.6678),
@@ -137,12 +121,23 @@ def camera_data():
     }
 
 
-@pytest.fixture
-def create_camera(get_session, camera_data):
+@pytest.fixture(scope="function")
+def created_camera(get_session, camera_data):
     def _create_camera():
-        return camera.add_camera(get_session, **camera_data["create"])
+
+        return camera_crud.add(get_session, **camera_data["create"])
 
     return _create_camera
+
+
+@pytest.fixture(scope="function")
+def created_multi_cameras(get_session, camera_data, created_camera):
+    def _create_cameras():
+        created_camera()
+        camera_crud.add(get_session, **camera_data["create_another"])
+        return camera_crud.select(get_session)
+
+    return _create_cameras
 
 
 @pytest.fixture(scope="function")
@@ -154,7 +149,7 @@ def image_data():
             "location": (7.1234, 50.5678),
             "tobe_deleted": False,
         },
-        "create_with_timestamps": {
+        "create_another": {
             "camera_id": 1,
             "image_path": "/path/to/image_with_timestamps.jpg",
             "location": (7.1234, 50.5678),
@@ -166,6 +161,25 @@ def image_data():
             "tobe_deleted": True,
         },
     }
+
+
+@pytest.fixture(scope="function")
+def created_image(get_session, created_camera, image_data):
+    def _create_image():
+        created_camera()  # Ensure a camera exists before creating an image
+        return image_crud.add(get_session, **image_data["create"])
+
+    return _create_image
+
+
+@pytest.fixture(scope="function")
+def created_multi_images(get_session, image_data, created_image):
+    def _create_images():
+        created_image()
+        image_crud.add(get_session, **image_data["create_another"])
+        return image_crud.select(get_session)
+
+    return _create_images
 
 
 @pytest.fixture(scope="function")
@@ -300,13 +314,4 @@ def daily_analysis_result_data():
             "taxonomy_count": 20,
             "avg_confidence": 0.90,
         },
-    }
-
-
-@pytest.fixture
-def crud_factories(
-    create_camera,
-):
-    return {
-        Camera: create_camera,
     }
