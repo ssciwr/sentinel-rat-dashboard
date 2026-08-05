@@ -10,7 +10,7 @@ from testcontainers.community.postgres import PostgresContainer
 
 from datetime import datetime, UTC
 
-from dashboard.db import camera_crud, image_crud, ml_model_crud
+from dashboard.db import camera_crud, image_crud, ml_model_crud, detection_crud
 
 # for local docker desktop,
 # environ["DOCKER_HOST"] is "unix:///home/[user]/.docker/desktop/docker.sock"
@@ -244,6 +244,30 @@ def object_detection_data():
             "detected_class": "rodent",
         },
     }
+
+
+@pytest.fixture(scope="function")
+def created_object_detection(
+    get_session, object_detection_data, created_image, created_ml_model
+):
+    def _create_object_detection():
+        created_image()  # Ensure an image exists before creating an object detection
+        created_ml_model()  # Ensure a model exists before creating an object detection
+        return detection_crud.add(get_session, **object_detection_data["create"])
+
+    return _create_object_detection
+
+
+@pytest.fixture(scope="function")
+def created_multi_object_detections(
+    get_session, object_detection_data, created_object_detection
+):
+    def _create_object_detections():
+        created_object_detection()
+        detection_crud.add(get_session, **object_detection_data["create_another"])
+        return detection_crud.select(get_session)
+
+    return _create_object_detections
 
 
 @pytest.fixture(scope="function")

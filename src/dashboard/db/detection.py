@@ -5,114 +5,62 @@ from typing import Any
 from sqlalchemy import select, DateTime
 from sqlalchemy.orm import Session
 
-from .data_model import ObjectDetection
+from .data_model import ObjectDetection, DetectionCorrection
+from dashboard.db.crud import CRUDBase
 from . import utils
 
 
-def add_object_detection(
-    session: Session,
-    *,
-    image_capture_id: int,
-    det_model_id: int,
-    confidence: float,
-    bbox: Any,
-    detected_class: str,
-    created_at: DateTime | None = None,
-) -> ObjectDetection:
-    """Insert a new object_detection row and return the persisted object."""
+class ObjectDetectionCRUD(CRUDBase[ObjectDetection]):
+    def __init__(self):
+        """CRUD helper for the object_detection table."""
+        super().__init__(ObjectDetection)
 
-    object_detection = ObjectDetection(
-        image_capture_id=image_capture_id,
-        det_model_id=det_model_id,
-        confidence=confidence,
-        bbox=bbox,
-        detected_class=detected_class,
-    )
+    def add_object_detection(
+        self,
+        session: Session,
+        *,
+        image_capture_id: int,
+        det_model_id: int,
+        confidence: float,
+        bbox: Any,
+        detected_class: str,
+        created_at: DateTime | None = None,
+    ) -> ObjectDetection:
+        """Insert a new object_detection row and return the persisted object."""
 
-    if created_at is not None:
-        object_detection.created_at = created_at
-
-    session.add(object_detection)
-    utils.commit(session)
-    session.refresh(object_detection)
-
-    return object_detection
-
-
-def select_object_detections(session: Session) -> list[ObjectDetection]:
-    """Return all object_detection rows ordered by primary key."""
-
-    statement = select(ObjectDetection).order_by(ObjectDetection.id)
-    return list(session.execute(statement).scalars().all())
-
-
-def get_object_detection(
-    session: Session, object_detection_id: int
-) -> ObjectDetection | None:
-    """Return one object_detection row by primary key."""
-
-    return session.get(ObjectDetection, object_detection_id)
-
-
-def get_object_detections_by_filter(
-    session: Session, **filters: Any
-) -> list[ObjectDetection]:
-    """Return a list of object_detection rows filtered by the provided keyword arguments."""
-
-    if not filters:
-        raise ValueError(
-            "At least one filter must be provided."
-            "To select all detections, use `select_object_detections()` instead."
+        object_detection = ObjectDetection(
+            image_capture_id=image_capture_id,
+            det_model_id=det_model_id,
+            confidence=confidence,
+            bbox=bbox,
+            detected_class=detected_class,
         )
 
-    statement = (
-        select(ObjectDetection).filter_by(**filters).order_by(ObjectDetection.id)
-    )
-    return list(session.execute(statement).scalars().all())
+        if created_at is not None:
+            object_detection.created_at = created_at
 
+        session.add(object_detection)
+        utils.commit(session)
+        session.refresh(object_detection)
 
-def update_object_detection(
-    session: Session, object_detection_id: int, **changes: Any
-) -> ObjectDetection | None:
-    """Update an object_detection row and return the refreshed object, or None if missing."""
-
-    object_detection = session.get(ObjectDetection, object_detection_id)
-    if object_detection is None:
-        return None
-
-    if not changes:
         return object_detection
 
-    allowed_fields = {
-        "image_capture_id",
-        "det_model_id",
-        "confidence",
-        "bbox",
-        "detected_class",
-    }
-    unexpected_fields = set(changes.keys()) - allowed_fields
-    if unexpected_fields:
-        raise ValueError(
-            f"Unsupported object_detection fields: {sorted(unexpected_fields)}"
+    def update(self, *args, **kwargs) -> Any:
+        """This method is not intended to be used directly.
+        Correction of a detection should be stored in DetectionCorrection table."""
+
+        raise NotImplementedError(
+            "Direct update of object_detection is not allowed. "
+            "Use DetectionCorrectionCRUD to store corrections for object detections."
         )
 
-    for key, value in changes.items():
-        setattr(object_detection, key, value)
 
-    utils.commit(session)
-    session.refresh(object_detection)
-
-    return object_detection
+class DetectionCorrectionCRUD(CRUDBase[DetectionCorrection]):
+    def __init__(self):
+        """CRUD helper for the detection_correction table."""
+        super().__init__(DetectionCorrection)
 
 
-def delete_object_detection(session: Session, object_detection_id: int) -> bool:
-    """Delete an object_detection row by primary key. Return True if deleted, False if not found."""
-
-    object_detection = session.get(ObjectDetection, object_detection_id)
-    if object_detection is None:
-        return False
-
-    session.delete(object_detection)
-    utils.commit(session)
-
-    return True
+# create instances of ObjectDetectionCRUD and DetectionCorrectionCRUD to be used in other modules
+detection_crud = ObjectDetectionCRUD()
+detection_correction_crud = DetectionCorrectionCRUD()
