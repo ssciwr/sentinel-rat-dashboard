@@ -53,7 +53,7 @@ Methods implemented in the CRUD classes are summarized in the following table:
 | ImageCRUD | ✓ | - | - | - | x | - | `get_images_to_delete`,<br> `get_images_in_period`,<br> `mark_image_for_deletion` |
 | MLModelCRUD | - | - | - | - | - | - |  |
 | ObjectDetectionCRUD | ✓ | - | - | - | x | - |  |
-| TaxonomyCRUD | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |
+| TaxonomyCRUD | - | - | - | - | - | - |  |
 | SpeciesClassificationCRUD | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | AppUserCRUD | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | DetectionCorrectionCRUD | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |

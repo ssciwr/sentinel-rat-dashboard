@@ -10,7 +10,13 @@ from testcontainers.community.postgres import PostgresContainer
 
 from datetime import datetime, UTC
 
-from dashboard.db import camera_crud, image_crud, ml_model_crud, detection_crud
+from dashboard.db import (
+    camera_crud,
+    image_crud,
+    ml_model_crud,
+    detection_crud,
+    taxonomy_crud,
+)
 
 # for local docker desktop,
 # environ["DOCKER_HOST"] is "unix:///home/[user]/.docker/desktop/docker.sock"
@@ -278,7 +284,7 @@ def taxonomy_data():
             "genus": "Rattus",
             "family": "Muridae",
         },
-        "create_with_optional_fields": {
+        "create_another": {
             "species": "Mus musculus",
             "genus": "Mus",
             "family": "Muridae",
@@ -292,6 +298,24 @@ def taxonomy_data():
             "common_name": "Updated common name",
         },
     }
+
+
+@pytest.fixture(scope="function")
+def created_taxonomy(get_session, taxonomy_data):
+    def _create_taxonomy():
+        return taxonomy_crud.add(get_session, **taxonomy_data["create"])
+
+    return _create_taxonomy
+
+
+@pytest.fixture(scope="function")
+def created_multi_taxonomies(get_session, taxonomy_data, created_taxonomy):
+    def _create_taxonomies():
+        created_taxonomy()
+        taxonomy_crud.add(get_session, **taxonomy_data["create_another"])
+        return taxonomy_crud.select(get_session)
+
+    return _create_taxonomies
 
 
 @pytest.fixture(scope="function")
