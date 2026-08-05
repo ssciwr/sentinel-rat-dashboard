@@ -16,6 +16,8 @@ from dashboard.db import (
     ml_model_crud,
     detection_crud,
     taxonomy_crud,
+    classification_crud,
+    classification_correction_crud,
 )
 
 # for local docker desktop,
@@ -337,6 +339,39 @@ def species_classification_data():
             "confidence": 0.99,
         },
     }
+
+
+@pytest.fixture(scope="function")
+def created_species_classification(
+    get_session,
+    species_classification_data,
+    created_object_detection,
+    created_taxonomy,
+    created_ml_model,
+):
+    def _create_species_classification():
+        created_object_detection()  # Ensure an object detection exists before creating a species classification
+        created_taxonomy()  # Ensure a taxonomy exists before creating a species classification
+        created_ml_model()  # Ensure a model exists before creating a species classification
+        return classification_crud.add_species_classification(
+            get_session, **species_classification_data["create"]
+        )
+
+    return _create_species_classification
+
+
+@pytest.fixture(scope="function")
+def created_multi_species_classifications(
+    get_session, species_classification_data, created_species_classification
+):
+    def _create_species_classifications():
+        created_species_classification()
+        classification_crud.add_species_classification(
+            get_session, **species_classification_data["create_another"]
+        )
+        return classification_crud.select(get_session)
+
+    return _create_species_classifications
 
 
 @pytest.fixture(scope="function")
