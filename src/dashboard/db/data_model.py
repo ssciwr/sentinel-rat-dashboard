@@ -12,6 +12,8 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 
+from sqlalchemy.orm import relationship, Mapped, mapped_column
+
 from sqlalchemy.dialects.postgresql import JSONB
 
 from geoalchemy2 import Geometry
@@ -24,17 +26,34 @@ class Camera(Base):
 
     __tablename__ = "camera"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(255), nullable=False)
-    location = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    location: Mapped[Geometry] = mapped_column(
         Geometry(geometry_type="POINT", srid=4326), nullable=False, index=True
     )
-    description = Column(Text, nullable=True)
-    installation_date = Column(DateTime(timezone=True), server_default=func.now())
-    status = Column(
+    description: Mapped[str] = mapped_column(Text, nullable=True)
+    installation_date: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    status: Mapped[str] = mapped_column(
         Enum("active", "inactive", "maintenance", name="camera_status"),
         nullable=False,
         default="active",
+    )
+
+    # relationship to CameraLocationHistory
+    location_history = relationship(
+        "CameraLocationHistory", back_populates="camera", cascade="all, delete-orphan"
+    )
+
+    # relationship to ImageCapture
+    images = relationship(
+        "ImageCapture", back_populates="camera", cascade="all, delete-orphan"
+    )
+
+    # relationship to DailyAnalysisResult
+    daily_analysis_results = relationship(
+        "DailyAnalysisResult", back_populates="camera", cascade="all, delete-orphan"
     )
 
 
@@ -43,15 +62,24 @@ class CameraLocationHistory(Base):
 
     __tablename__ = "camera_location_history"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    camera_id = Column(Integer, ForeignKey("camera.id"), nullable=False, index=True)
-    location = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    camera_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("camera.id"), nullable=False, index=True
+    )
+    location: Mapped[Geometry] = mapped_column(
         Geometry(geometry_type="POINT", srid=4326), nullable=False, index=True
     )
-    valid_from = Column(
+    valid_from: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-    valid_to = Column(DateTime(timezone=True), nullable=True)  # Null means still valid
+    valid_to: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )  # Null means still valid
+
+    # relationship to Camera
+    camera = relationship(
+        "Camera", back_populates="location_history", foreign_keys=[camera_id]
+    )
 
 
 class ImageCapture(Base):
@@ -59,21 +87,31 @@ class ImageCapture(Base):
 
     __tablename__ = "image_capture"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    camera_id = Column(Integer, ForeignKey("camera.id"), nullable=False, index=True)
-    image_path = Column(Text, nullable=False)
-    captured_at = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    camera_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("camera.id"), nullable=False, index=True
+    )
+    image_path: Mapped[str] = mapped_column(Text, nullable=False)
+    captured_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-    uploaded_at = Column(
+    uploaded_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-    location = Column(
+    location: Mapped[Geometry] = mapped_column(
         Geometry(geometry_type="POINT", srid=4326), nullable=False, index=True
     )  # Fetched from the camera's location at the time of capture, since camera might be moved
-    tobe_deleted = Column(
+    tobe_deleted: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )  # Flag for deletion when storage is full
+
+    # relationship to Camera
+    camera = relationship("Camera", back_populates="images", foreign_keys=[camera_id])
+
+    # relationship to ObjectDetection
+    object_detections = relationship(
+        "ObjectDetection", back_populates="image_capture", cascade="all, delete-orphan"
+    )
 
 
 class MLModel(Base):
@@ -81,11 +119,23 @@ class MLModel(Base):
 
     __tablename__ = "ml_model"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(255), nullable=False)
-    version = Column(String(50), nullable=True)
-    task = Column(String(50), nullable=False)  # e.g., 'detection', 'classification'
-    description = Column(Text, nullable=True)  # additional information about the model
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    version: Mapped[str] = mapped_column(String(50), nullable=True)
+    task: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # e.g., 'detection', 'classification'
+    description: Mapped[str] = mapped_column(
+        Text, nullable=True
+    )  # additional information about the model
+
+    # relationships to ObjectDetection and SpeciesClassification
+    object_detections = relationship(
+        "ObjectDetection", back_populates="ml_model", cascade="all, delete-orphan"
+    )
+    species_classifications = relationship(
+        "SpeciesClassification", back_populates="ml_model", cascade="all, delete-orphan"
+    )
 
 
 class ObjectDetection(Base):
@@ -93,19 +143,49 @@ class ObjectDetection(Base):
 
     __tablename__ = "object_detection"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    image_capture_id = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    image_capture_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("image_capture.id"), nullable=False, index=True
     )
-    det_model_id = Column(
+    det_model_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("ml_model.id"), nullable=False, index=True
     )  # detection model used for this detection
-    created_at = Column(
+    created_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
     )  # Timestamp when the detection was created
-    confidence = Column(Float, nullable=False)
-    bbox = Column(JSONB, nullable=False)  # Store bounding box as JSON
-    detected_class = Column(String(255), nullable=False)  # e.g. 'animal'
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    bbox: Mapped[dict] = mapped_column(
+        JSONB, nullable=False
+    )  # Store bounding box as JSON
+    detected_class: Mapped[str] = mapped_column(
+        String(255), nullable=False
+    )  # e.g. 'animal'
+
+    # relationship to ImageCapture
+    image_capture = relationship(
+        "ImageCapture",
+        back_populates="object_detections",
+        foreign_keys=[image_capture_id],
+    )
+
+    # relationship to MLModel
+    ml_model = relationship(
+        "MLModel", back_populates="object_detections", foreign_keys=[det_model_id]
+    )
+
+    # relationship to SpeciesClassification
+    species_classifications = relationship(
+        "SpeciesClassification",
+        back_populates="object_detection",
+        cascade="all, delete-orphan",
+    )
+
+    # relationship to DetectionCorrection
+    detection_corrections = relationship(
+        "DetectionCorrection",
+        back_populates="object_detection",
+        cascade="all, delete-orphan",
+    )
 
 
 class Taxonomy(Base):
@@ -113,19 +193,36 @@ class Taxonomy(Base):
 
     __tablename__ = "taxonomy"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    kingdom = Column(String(255), nullable=True)
-    phylum = Column(String(255), nullable=True)
-    class_name = Column(String(255), nullable=True)
-    order = Column(String(255), nullable=True)
-    family = Column(String(255), nullable=True)
-    genus = Column(String(255), nullable=True)
-    species = Column(String(255), nullable=False, index=True)
-    common_name = Column(String(255), nullable=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    kingdom: Mapped[str] = mapped_column(String(255), nullable=True)
+    phylum: Mapped[str] = mapped_column(String(255), nullable=True)
+    class_name: Mapped[str] = mapped_column(String(255), nullable=True)
+    order: Mapped[str] = mapped_column(String(255), nullable=True)
+    family: Mapped[str] = mapped_column(String(255), nullable=True)
+    genus: Mapped[str] = mapped_column(String(255), nullable=True)
+    species: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    common_name: Mapped[str] = mapped_column(String(255), nullable=True)
 
     # species, genus, and family should be unique in combination
     __table_args__ = (
         UniqueConstraint("species", "genus", name="uq_taxonomy_species_genus"),
+    )
+
+    # relationship to SpeciesClassification
+    species_classifications = relationship(
+        "SpeciesClassification", back_populates="taxonomy", cascade="all, delete-orphan"
+    )
+
+    # relationship to ClassificationCorrection
+    classification_corrections = relationship(
+        "ClassificationCorrection",
+        back_populates="taxonomy",
+        cascade="all, delete-orphan",
+    )
+
+    # relationship to DailyAnalysisResult
+    daily_analysis_results = relationship(
+        "DailyAnalysisResult", back_populates="taxonomy", cascade="all, delete-orphan"
     )
 
 
@@ -134,18 +231,46 @@ class SpeciesClassification(Base):
 
     __tablename__ = "species_classification"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    object_detection_id = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    object_detection_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("object_detection.id"), nullable=False, index=True
     )
-    taxonomy_id = Column(Integer, ForeignKey("taxonomy.id"), nullable=False, index=True)
-    clas_model_id = Column(
+    taxonomy_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("taxonomy.id"), nullable=False, index=True
+    )
+    clas_model_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("ml_model.id"), nullable=False, index=True
     )  # classification model used for this classification
-    created_at = Column(
+    created_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
     )  # Timestamp when the classification was created
-    confidence = Column(Float, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+
+    # relationship to ObjectDetection
+    object_detection = relationship(
+        "ObjectDetection",
+        back_populates="species_classifications",
+        foreign_keys=[object_detection_id],
+    )
+
+    # relationship to Taxonomy
+    taxonomy = relationship(
+        "Taxonomy", back_populates="species_classifications", foreign_keys=[taxonomy_id]
+    )
+
+    # relationship to MLModel
+    ml_model = relationship(
+        "MLModel",
+        back_populates="species_classifications",
+        foreign_keys=[clas_model_id],
+    )
+
+    # relationship to ClassificationCorrection
+    classification_corrections = relationship(
+        "ClassificationCorrection",
+        back_populates="species_classification",
+        cascade="all, delete-orphan",
+    )
 
 
 class AppUser(Base):
@@ -153,13 +278,25 @@ class AppUser(Base):
 
     __tablename__ = "app_user"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    username = Column(String(50), unique=True, nullable=False)
-    full_name = Column(String(255), nullable=True)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    full_name: Mapped[str] = mapped_column(String(255), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    # relationship to DetectionCorrection
+    detection_corrections = relationship(
+        "DetectionCorrection", back_populates="user", cascade="all, delete-orphan"
+    )
+
+    # relationship to ClassificationCorrection
+    classification_corrections = relationship(
+        "ClassificationCorrection", back_populates="user", cascade="all, delete-orphan"
     )
 
 
@@ -168,23 +305,38 @@ class DetectionCorrection(Base):
 
     __tablename__ = "detection_correction"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    object_detection_id = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    object_detection_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("object_detection.id"), nullable=False, index=True
     )
-    user_id = Column(Integer, ForeignKey("app_user.id"), nullable=False, index=True)
-    corrected_bbox = Column(
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("app_user.id"), nullable=False, index=True
+    )
+    corrected_bbox: Mapped[dict] = mapped_column(
         JSONB, nullable=False
     )  # Store corrected bounding box as JSON
-    corrected_class = Column(String(255), nullable=False)  # e.g. 'animal'
-    comment = Column(Text, nullable=True)
-    created_at = Column(
+    corrected_class: Mapped[str] = mapped_column(
+        String(255), nullable=False
+    )  # e.g. 'animal'
+    comment: Mapped[str] = mapped_column(Text, nullable=True)
+    created_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
     )  # Timestamp when the correction was made
-    action = Column(
-        Enum("add", "remove", "modify", name="correction_det_action"),
+    action: Mapped[str] = mapped_column(
+        Enum("add", "remove", "update", name="detection_correction_action"),
         nullable=False,
-        default="modify",
+    )  # Action taken: add, remove, or update the detection
+
+    # relationship to ObjectDetection
+    object_detection = relationship(
+        "ObjectDetection",
+        back_populates="detection_corrections",
+        foreign_keys=[object_detection_id],
+    )
+
+    # relationship to AppUser
+    user = relationship(
+        "AppUser", back_populates="detection_corrections", foreign_keys=[user_id]
     )
 
 
@@ -193,18 +345,39 @@ class ClassificationCorrection(Base):
 
     __tablename__ = "classification_correction"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    species_classification_id = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    species_classification_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("species_classification.id"), nullable=False, index=True
     )
-    user_id = Column(Integer, ForeignKey("app_user.id"), nullable=False, index=True)
-    corrected_taxonomy_id = Column(
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("app_user.id"), nullable=False, index=True
+    )
+    corrected_taxonomy_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("taxonomy.id"), nullable=False, index=True
     )
-    comment = Column(Text, nullable=True)
-    created_at = Column(
+    comment: Mapped[str] = mapped_column(Text, nullable=True)
+    created_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
     )  # Timestamp when the correction was made
+
+    # relationship to SpeciesClassification
+    species_classification = relationship(
+        "SpeciesClassification",
+        back_populates="classification_corrections",
+        foreign_keys=[species_classification_id],
+    )
+
+    # relationship to Taxonomy
+    taxonomy = relationship(
+        "Taxonomy",
+        back_populates="classification_corrections",
+        foreign_keys=[corrected_taxonomy_id],
+    )
+
+    # relationship to AppUser
+    user = relationship(
+        "AppUser", back_populates="classification_corrections", foreign_keys=[user_id]
+    )
 
 
 class DailyAnalysisResult(Base):
@@ -212,15 +385,23 @@ class DailyAnalysisResult(Base):
 
     __tablename__ = "daily_analysis_result"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    camera_id = Column(Integer, ForeignKey("camera.id"), nullable=False, index=True)
-    start_time = Column(DateTime(timezone=True), nullable=False, index=True)
-    end_time = Column(DateTime(timezone=True), nullable=False, index=True)
-    taxonomy_id = Column(Integer, ForeignKey("taxonomy.id"), nullable=False, index=True)
-    taxonomy_count = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    camera_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("camera.id"), nullable=False, index=True
+    )
+    start_time: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+    end_time: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+    taxonomy_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("taxonomy.id"), nullable=False, index=True
+    )
+    taxonomy_count: Mapped[int] = mapped_column(
         Integer, nullable=False
     )  # Total number of detected taxonomy instances in this period
-    avg_confidence = Column(
+    avg_confidence: Mapped[float] = mapped_column(
         Float, nullable=False
     )  # Average confidence of detections in this period
 
@@ -228,4 +409,14 @@ class DailyAnalysisResult(Base):
         UniqueConstraint(
             "camera_id", "start_time", "taxonomy_id", name="uq_daily_analysis"
         ),
+    )
+
+    # relationship to Camera
+    camera = relationship(
+        "Camera", back_populates="daily_analysis_results", foreign_keys=[camera_id]
+    )
+
+    # relationship to Taxonomy
+    taxonomy = relationship(
+        "Taxonomy", back_populates="daily_analysis_results", foreign_keys=[taxonomy_id]
     )
