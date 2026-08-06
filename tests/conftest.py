@@ -18,6 +18,7 @@ from dashboard.db import (
     taxonomy_crud,
     classification_crud,
     classification_correction_crud,
+    app_user_crud,
 )
 
 # for local docker desktop,
@@ -382,7 +383,7 @@ def app_user_data():
             "full_name": "Test User",
             "is_active": True,
         },
-        "create_wo_optional_fields": {
+        "create_another": {
             "username": "testuser2",
         },
         "update": {
@@ -390,6 +391,24 @@ def app_user_data():
             "is_active": False,
         },
     }
+
+
+@pytest.fixture(scope="function")
+def created_app_user(get_session, app_user_data):
+    def _create_app_user():
+        return app_user_crud.add(get_session, **app_user_data["create"])
+
+    return _create_app_user
+
+
+@pytest.fixture(scope="function")
+def created_multi_app_users(get_session, app_user_data, created_app_user):
+    def _create_app_users():
+        created_app_user()
+        app_user_crud.add(get_session, **app_user_data["create_another"])
+        return app_user_crud.select(get_session)
+
+    return _create_app_users
 
 
 @pytest.fixture(scope="function")
