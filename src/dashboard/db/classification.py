@@ -110,9 +110,10 @@ class ClassificationCorrectionCRUD(CRUDBase[ClassificationCorrection]):
             if new_obj_det_id is not None:
                 warnings.warn(
                     "new_obj_det_id is provided but species_classification_id is not None "
-                    "and action is not 'add'. "
-                    "This means that the new classification correction does not "
+                    "and action is not 'add', "
+                    "which is used when the new classification correction does not "
                     "correspond to a newly added detection correction. "
+                    "Therefore, new_obj_det_id will be ignored."
                 )
             classification_correction.new_classification_id = None
         elif species_classification_id is None and action != "add":

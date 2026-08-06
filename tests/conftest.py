@@ -512,7 +512,7 @@ def created_classification_correction(
     created_species_classification,
 ):
     def _create_classification_correction():
-        created_multi_detection_corrections()  # also prepare for create_another
+        created_multi_detection_corrections()  # also prepare for create_another case
         created_species_classification()
         return classification_correction_crud.add(
             get_session, **classification_correction_data["create"]
