@@ -15,9 +15,9 @@ R Shiny application for browsing animal detection results from PostgreSQL (PostG
 
 ### Data Model
 
-There are 12 tables in the database, which are defined in `src/dashboard/db/data_model.py`. The data model is illustrated in the following figure:
+There are 11 tables in the database, which are defined in `src/dashboard/db/data_model.py`. The data model is illustrated in the following figure:
 
-[Figure of data model here...]()
+![db-model](docs/figures/sentinel-rat.db-model.png)
 
 ### Folder structure
 
