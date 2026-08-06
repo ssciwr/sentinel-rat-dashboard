@@ -507,13 +507,13 @@ def classification_correction_data():
 @pytest.fixture(scope="function")
 def created_classification_correction(
     get_session,
+    created_multi_detection_corrections,
     classification_correction_data,
     created_species_classification,
-    created_app_user,
 ):
     def _create_classification_correction():
+        created_multi_detection_corrections()  # also prepare for create_another
         created_species_classification()
-        created_app_user()
         return classification_correction_crud.add(
             get_session, **classification_correction_data["create"]
         )
@@ -526,10 +526,8 @@ def created_multi_classification_corrections(
     get_session,
     classification_correction_data,
     created_classification_correction,
-    created_detection_correction,
 ):
     def _create_classification_corrections():
-        created_detection_correction()
         created_classification_correction()
         classification_correction_crud.add(
             get_session, **classification_correction_data["create_another"]
