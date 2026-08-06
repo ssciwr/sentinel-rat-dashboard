@@ -5,3 +5,4 @@ from .detection import detection_crud, detection_correction_crud
 from .taxonomy import taxonomy_crud
 from .classification import classification_crud, classification_correction_crud
 from .app_user import app_user_crud
+from .analysis_result import daily_analysis_result_crud

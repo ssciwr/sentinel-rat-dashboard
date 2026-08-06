@@ -41,23 +41,23 @@ CRUD operations are defined in general in `crud.py` and then specialized for eac
 
 Methods implemented in the CRUD classes are summarized in the following table:
 
-* ✓: implemented
-* x: not allowed to use directly (raise `NotImplementedError`)
-* -: inherited from `CRUDBase` and not overridden in the specialized CRUD class
+* ✓ : implemented or overridden in the specialized CRUD class
+* x : not allowed to use directly (raise `NotImplementedError`)
+* . : inherited from `CRUDBase` and not overridden in the specialized CRUD class
 
 | Class | add | select | get | filter | update | delete | other methods |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | CRUDBase | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |
-| CameraCRUD | ✓ | - | - | - | ✓ | - |  |
-| CameraLocationHistoryCRUD | x | - | - | - | x | x | `add_location_change`,<br> `get_by_camera`,<br> `update_valid_to_most_recent_history`,<br> `delete_old_camera_history` |
-| ImageCRUD | ✓ | - | - | - | x | - | `get_images_to_delete`,<br> `get_images_in_period`,<br> `mark_image_for_deletion` |
-| MLModelCRUD | - | - | - | - | - | - |  |
-| ObjectDetectionCRUD | ✓ | - | - | - | x | - |  |
-| TaxonomyCRUD | - | - | - | - | - | - |  |
-| SpeciesClassificationCRUD | ✓ | - | - | - | x | - |  |
-| AppUserCRUD | ✓ | - | - | - | ✓ | - |  |
+| CameraCRUD | ✓ | . | . | . | ✓ | . |  |
+| CameraLocationHistoryCRUD | x | . | . | . | x | x | `add_location_change`,<br> `get_by_camera`,<br> `update_valid_to_most_recent_history`,<br> `delete_old_camera_history` |
+| ImageCRUD | ✓ | . | . | . | x | . | `get_images_to_delete`,<br> `get_images_in_period`,<br> `mark_image_for_deletion` |
+| MLModelCRUD | . | . | . | . | . | . |  |
+| ObjectDetectionCRUD | ✓ | . | . | . | x | . |  |
+| TaxonomyCRUD | . | . | . | . | . | . |  |
+| SpeciesClassificationCRUD | ✓ | . | . | . | x | . |  |
+| AppUserCRUD | ✓ | . | . | . | ✓ | . |  |
 | DetectionCorrectionCRUD | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | ClassificationCorrectionCRUD | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |
-| DailyAnalysisResultCRUD | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |
+| DailyAnalysisResultCRUD | . | . | . | . | . | . |  |
 
 

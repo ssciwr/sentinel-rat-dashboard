@@ -15,10 +15,12 @@ from dashboard.db import (
     image_crud,
     ml_model_crud,
     detection_crud,
+    detection_correction_crud,
     taxonomy_crud,
     classification_crud,
     classification_correction_crud,
     app_user_crud,
+    daily_analysis_result_crud,
 )
 
 # for local docker desktop,
@@ -435,3 +437,34 @@ def daily_analysis_result_data():
             "avg_confidence": 0.90,
         },
     }
+
+
+@pytest.fixture(scope="function")
+def created_daily_analysis_result(
+    get_session,
+    daily_analysis_result_data,
+    created_camera,
+    created_multi_taxonomies,
+):
+    def _create_daily_analysis_result():
+        created_camera()  # Ensure a camera exists before creating a daily analysis result
+        created_multi_taxonomies()  # Ensure taxonomies exist before creating a daily analysis result
+        return daily_analysis_result_crud.add(
+            get_session, **daily_analysis_result_data["create"]
+        )
+
+    return _create_daily_analysis_result
+
+
+@pytest.fixture(scope="function")
+def created_multi_daily_analysis_results(
+    get_session, daily_analysis_result_data, created_daily_analysis_result
+):
+    def _create_daily_analysis_results():
+        created_daily_analysis_result()
+        daily_analysis_result_crud.add(
+            get_session, **daily_analysis_result_data["create_another"]
+        )
+        return daily_analysis_result_crud.select(get_session)
+
+    return _create_daily_analysis_results

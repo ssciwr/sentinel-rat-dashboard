@@ -17,6 +17,11 @@ from dashboard.db import (
     [
         (ml_model.ml_model_crud, "created_ml_model", "ml_model_data"),
         (taxonomy.taxonomy_crud, "created_taxonomy", "taxonomy_data"),
+        (
+            analysis_result.daily_analysis_result_crud,
+            "created_daily_analysis_result",
+            "daily_analysis_result_data",
+        ),
     ],
 )
 def test_add_return_added_row(request, crud, fixture_name, sample_data):
@@ -42,6 +47,7 @@ def test_add_return_added_row(request, crud, fixture_name, sample_data):
         (taxonomy.taxonomy_crud, "created_taxonomy"),
         (classification.classification_crud, "created_species_classification"),
         (app_user.app_user_crud, "created_app_user"),
+        (analysis_result.daily_analysis_result_crud, "created_daily_analysis_result"),
     ],
 )
 def test_select_and_get_return_saved_rows(request, get_session, crud, fixture_name):
@@ -68,6 +74,10 @@ def test_select_and_get_return_saved_rows(request, get_session, crud, fixture_na
         (taxonomy.taxonomy_crud, "created_multi_taxonomies"),
         (classification.classification_crud, "created_multi_species_classifications"),
         (app_user.app_user_crud, "created_multi_app_users"),
+        (
+            analysis_result.daily_analysis_result_crud,
+            "created_multi_daily_analysis_results",
+        ),
     ],
 )
 def test_filter_returns_filtered_rows(request, get_session, crud, fixture_name):
@@ -99,6 +109,11 @@ def test_filter_returns_filtered_rows(request, get_session, crud, fixture_name):
     [
         (ml_model.ml_model_crud, "created_ml_model", "ml_model_data"),
         (taxonomy.taxonomy_crud, "created_taxonomy", "taxonomy_data"),
+        (
+            analysis_result.daily_analysis_result_crud,
+            "created_daily_analysis_result",
+            "daily_analysis_result_data",
+        ),
     ],
 )
 def test_update_fields(request, get_session, crud, fixture_name, sample_data):
@@ -159,6 +174,7 @@ def test_update_fields(request, get_session, crud, fixture_name, sample_data):
         (taxonomy.taxonomy_crud, "created_taxonomy"),
         (classification.classification_crud, "created_species_classification"),
         (app_user.app_user_crud, "created_app_user"),
+        (analysis_result.daily_analysis_result_crud, "created_daily_analysis_result"),
     ],
 )
 def test_delete_removes_row(request, get_session, crud, fixture_name):
