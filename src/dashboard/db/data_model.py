@@ -327,6 +327,7 @@ class DetectionCorrection(Base):
         Integer,
         nullable=True,
         index=True,
+        unique=True,
     )
     # repeat image_capture_id and det_model_id in case a new detection is added
     image_capture_id: Mapped[int] = mapped_column(
@@ -377,17 +378,26 @@ class DetectionCorrection(Base):
         "MLModel", back_populates="detection_corrections", foreign_keys=[det_model_id]
     )
 
+    # relationship to ClassificationCorrection for new_detection_id
+    classification_corrections = relationship(
+        "ClassificationCorrection",
+        back_populates="detection_correction",
+        primaryjoin=(
+            "DetectionCorrection.new_detection_id == "
+            "foreign(ClassificationCorrection.new_obj_det_id)"
+        ),
+        cascade="all, delete-orphan",
+    )
+
     # unique constraint
-    # store only the lastest correction of user for a given object_detection_id
     __table_args__ = (
+        # store only the lastest correction of user for a given object_detection_id
         UniqueConstraint(
             "object_detection_id",
             "app_user_id",
             name="uq_detection_correction_obj_detection_user",
         ),
-    )
-    # same for user and new_detection_id
-    __table_args__ = (
+        # same for user and new_detection_id
         UniqueConstraint(
             "new_detection_id",
             "app_user_id",
@@ -402,19 +412,33 @@ class ClassificationCorrection(Base):
     __tablename__ = "classification_correction"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    species_classification_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("species_classification.id"), nullable=False, index=True
+    species_classification_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("species_classification.id"), nullable=True, index=True
     )
-    user_id: Mapped[int] = mapped_column(
+    # if a new detection is added, a new classification will be created
+    new_obj_det_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("detection_correction.new_detection_id"),
+        nullable=True,
+        index=True,
+    )
+    new_classification_id: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, index=True
+    )
+    app_user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("app_user.id"), nullable=False, index=True
     )
     corrected_taxonomy_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("taxonomy.id"), nullable=False, index=True
     )
     comment: Mapped[str] = mapped_column(Text, nullable=True)
-    created_at: Mapped[DateTime] = mapped_column(
+    last_updated: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
     )  # Timestamp when the correction was made
+    action: Mapped[str] = mapped_column(
+        Enum("add", "update", name="classification_correction_action"),
+        nullable=False,
+    )  # Action taken: add or update the classification
 
     # relationship to SpeciesClassification
     species_classification = relationship(
@@ -432,7 +456,35 @@ class ClassificationCorrection(Base):
 
     # relationship to AppUser
     user = relationship(
-        "AppUser", back_populates="classification_corrections", foreign_keys=[user_id]
+        "AppUser",
+        back_populates="classification_corrections",
+        foreign_keys=[app_user_id],
+    )
+
+    # relationship to DetectionCorrection for new_obj_det_id
+    detection_correction = relationship(
+        "DetectionCorrection",
+        back_populates="classification_corrections",
+        primaryjoin=(
+            "DetectionCorrection.new_detection_id == "
+            "foreign(ClassificationCorrection.new_obj_det_id)"
+        ),
+    )
+
+    # unique constraint
+    __table_args__ = (
+        # store only the lastest correction of user for a given species_classification_id
+        UniqueConstraint(
+            "species_classification_id",
+            "app_user_id",
+            name="uq_classification_correction_species_classification_user",
+        ),
+        # same for user and new_classification_id
+        UniqueConstraint(
+            "new_classification_id",
+            "app_user_id",
+            name="uq_classification_correction_new_classification_user",
+        ),
     )
 
 

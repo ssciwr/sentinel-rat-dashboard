@@ -49,6 +49,10 @@ def test_add_return_added_row(request, crud, fixture_name, sample_data):
         (app_user.app_user_crud, "created_app_user"),
         (analysis_result.daily_analysis_result_crud, "created_daily_analysis_result"),
         (detection.detection_correction_crud, "created_detection_correction"),
+        (
+            classification.classification_correction_crud,
+            "created_classification_correction",
+        ),
     ],
 )
 def test_select_and_get_return_saved_rows(request, get_session, crud, fixture_name):
@@ -80,6 +84,10 @@ def test_select_and_get_return_saved_rows(request, get_session, crud, fixture_na
             "created_multi_daily_analysis_results",
         ),
         (detection.detection_correction_crud, "created_multi_detection_corrections"),
+        (
+            classification.classification_correction_crud,
+            "created_multi_classification_corrections",
+        ),
     ],
 )
 def test_filter_returns_filtered_rows(request, get_session, crud, fixture_name):
@@ -178,6 +186,10 @@ def test_update_fields(request, get_session, crud, fixture_name, sample_data):
         (app_user.app_user_crud, "created_app_user"),
         (analysis_result.daily_analysis_result_crud, "created_daily_analysis_result"),
         (detection.detection_correction_crud, "created_detection_correction"),
+        (
+            classification.classification_correction_crud,
+            "created_classification_correction",
+        ),
     ],
 )
 def test_delete_removes_row(request, get_session, crud, fixture_name):

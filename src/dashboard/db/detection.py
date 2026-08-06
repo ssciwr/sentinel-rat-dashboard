@@ -93,8 +93,7 @@ class DetectionCorrectionCRUD(CRUDBase[DetectionCorrection]):
         # 1. when action is "update" or "remove", object_detection_id must be provided
         # and new_detection_id will be None
         # 2. when action is "add", object_detection_id is None
-        # new_detection_id is the next sequence value of new detections
-        # within the same image_capture_id and det_model_id
+        # new_detection_id is the next sequence value of new detections across rows
         # 3. otherwise, raise an error
         if object_detection_id is not None and action != "add":
             # no new detection is added
@@ -109,8 +108,6 @@ class DetectionCorrectionCRUD(CRUDBase[DetectionCorrection]):
             # action is "add" and object_detection_id is None
             # get the next sequence value for new_detection_id
             stmt = select(func.max(DetectionCorrection.new_detection_id)).where(
-                DetectionCorrection.image_capture_id == image_capture_id,
-                DetectionCorrection.det_model_id == det_model_id,
                 DetectionCorrection.action == "add",
             )
             latest_new_det_id = session.execute(stmt).scalar()
@@ -143,7 +140,6 @@ class DetectionCorrectionCRUD(CRUDBase[DetectionCorrection]):
         }
 
         allowed_fields = non_pk_fk_fields - {
-            "object_detection_id",
             "new_detection_id",
             "last_updated",
         }

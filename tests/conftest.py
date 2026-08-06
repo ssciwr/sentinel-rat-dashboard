@@ -479,6 +479,67 @@ def created_multi_detection_corrections(
 
 
 @pytest.fixture(scope="function")
+def classification_correction_data():
+    return {
+        "create": {
+            "species_classification_id": 1,
+            "new_obj_det_id": None,
+            "app_user_id": 1,
+            "corrected_taxonomy_id": 1,
+            "action": "update",
+            "comment": "Corrected the taxonomy for the classification",
+        },
+        "create_another": {
+            "species_classification_id": None,
+            "new_obj_det_id": 1,
+            "app_user_id": 1,
+            "corrected_taxonomy_id": 1,
+            "action": "add",
+            "comment": "Adding a new classification correction",
+        },
+        "update": {
+            "action": "update",
+            "comment": "Updating the classification correction",
+        },
+    }
+
+
+@pytest.fixture(scope="function")
+def created_classification_correction(
+    get_session,
+    classification_correction_data,
+    created_species_classification,
+    created_app_user,
+):
+    def _create_classification_correction():
+        created_species_classification()
+        created_app_user()
+        return classification_correction_crud.add(
+            get_session, **classification_correction_data["create"]
+        )
+
+    return _create_classification_correction
+
+
+@pytest.fixture(scope="function")
+def created_multi_classification_corrections(
+    get_session,
+    classification_correction_data,
+    created_classification_correction,
+    created_detection_correction,
+):
+    def _create_classification_corrections():
+        created_detection_correction()
+        created_classification_correction()
+        classification_correction_crud.add(
+            get_session, **classification_correction_data["create_another"]
+        )
+        return classification_correction_crud.select(get_session)
+
+    return _create_classification_corrections
+
+
+@pytest.fixture(scope="function")
 def daily_analysis_result_data():
     return {
         "create": {

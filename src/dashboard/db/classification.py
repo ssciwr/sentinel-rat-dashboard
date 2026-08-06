@@ -1,13 +1,16 @@
 """CRUD helpers for the species_classification table"""
 
-from typing import Any
+from typing import Literal, Any
 
-from sqlalchemy import select, DateTime
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from .data_model import SpeciesClassification, ClassificationCorrection
 from dashboard.db.crud import CRUDBase
 from . import utils
+
+from datetime import datetime
+import warnings
 
 
 class SpeciesClassificationCRUD(CRUDBase[SpeciesClassification]):
@@ -24,7 +27,7 @@ class SpeciesClassificationCRUD(CRUDBase[SpeciesClassification]):
         taxonomy_id: int,
         clas_model_id: int,
         confidence: float,
-        created_at: DateTime | None = None,
+        created_at: datetime | None = None,
     ) -> SpeciesClassification:
         """Insert a new species_classification row and return the persisted object."""
 
@@ -59,6 +62,119 @@ class ClassificationCorrectionCRUD(CRUDBase[ClassificationCorrection]):
 
     def __init__(self):
         super().__init__(ClassificationCorrection)
+
+    def add(
+        self,
+        session: Session,
+        *,
+        species_classification_id: int | None,
+        new_obj_det_id: int | None,
+        app_user_id: int,
+        corrected_taxonomy_id: int,
+        comment: str | None = None,
+        last_updated: datetime | None = None,
+        action: Literal["add", "update"] = "update",
+    ) -> ClassificationCorrection:
+        """Insert a new classification_correction row and return the persisted object."""
+
+        classification_correction = ClassificationCorrection(
+            species_classification_id=species_classification_id,
+            new_obj_det_id=new_obj_det_id,
+            app_user_id=app_user_id,
+            corrected_taxonomy_id=corrected_taxonomy_id,
+            comment=comment,
+            action=action,
+        )
+
+        # in case of a new detection correction is added into DetectionCorrection table
+        # a new_classification_id will be generated as the next sequence value across rows
+        # this only happens when action is "add", species_classification_id is None,
+        # and new_obj_det_id is fetched from the newly added detection correction,
+        # which is done in the application layer.
+        if species_classification_id is None and action == "add":
+            if new_obj_det_id is None:
+                raise ValueError(
+                    "new_obj_det_id must be provided when adding a new classification correction "
+                    "for a newly added detection correction, "
+                )
+
+            stmt = select(
+                func.max(ClassificationCorrection.new_classification_id)
+            ).where(ClassificationCorrection.action == "add")
+            latest_new_class_id = session.execute(stmt).scalar()
+            classification_correction.new_classification_id = (
+                latest_new_class_id + 1 if latest_new_class_id is not None else 1
+            )
+        elif species_classification_id is not None and action != "add":
+            # no new classification is added
+            if new_obj_det_id is not None:
+                warnings.warn(
+                    "new_obj_det_id is provided but species_classification_id is not None "
+                    "and action is not 'add'. "
+                    "This means that the new classification correction does not "
+                    "correspond to a newly added detection correction. "
+                )
+            classification_correction.new_classification_id = None
+        elif species_classification_id is None and action != "add":
+            raise ValueError(
+                "species_classification_id must be provided unless action is 'add'."
+            )
+        else:
+            raise ValueError(
+                "species_classification_id must be None when action is 'add'."
+            )
+
+        if last_updated is not None:
+            classification_correction.last_updated = last_updated
+
+        session.add(classification_correction)
+        utils.commit(session)
+        session.refresh(classification_correction)
+
+        return classification_correction
+
+    def update(
+        self,
+        session: Session,
+        classification_correction_id: int,
+        **changes: Any,
+    ) -> ClassificationCorrection | None:
+        """Update a classification_correction row and return the refreshed object, or None if missing."""
+
+        classification_correction = session.get(
+            self.model, classification_correction_id
+        )
+        if classification_correction is None:
+            return None
+
+        non_pk_fk_fields = {
+            col.name
+            for col in ClassificationCorrection.__table__.columns
+            if not col.primary_key and not col.foreign_keys
+        }
+
+        allowed_fields = non_pk_fk_fields - {
+            "new_obj_det_id",
+            "last_updated",
+        }
+
+        unsupported_fields = set(changes.keys()) - allowed_fields
+        if unsupported_fields:
+            raise ValueError(
+                f"Unsupported classification_correction fields: {sorted(unsupported_fields)}"
+            )
+
+        # raise error if action is updated to "add"
+        if "action" in changes and changes["action"] == "add":
+            raise ValueError(
+                "Direct update of action to 'add' is not allowed. "
+                "Use the add() method to create a new classification correction."
+            )
+
+        # update last_updated to current timestamp
+        classification_correction.last_updated = func.now()
+
+        return super().update(session, classification_correction_id, **changes)
 
 
 # Create instances of the CRUD classes for use in other parts of the application
