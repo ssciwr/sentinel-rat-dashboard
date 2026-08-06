@@ -113,6 +113,13 @@ class ImageCapture(Base):
         "ObjectDetection", back_populates="image_capture", cascade="all, delete-orphan"
     )
 
+    # relationship to DetectionCorrection
+    detection_corrections = relationship(
+        "DetectionCorrection",
+        back_populates="image_capture",
+        cascade="all, delete-orphan",
+    )
+
 
 class MLModel(Base):
     """MLModel table"""
@@ -135,6 +142,11 @@ class MLModel(Base):
     )
     species_classifications = relationship(
         "SpeciesClassification", back_populates="ml_model", cascade="all, delete-orphan"
+    )
+
+    # relationship to DetectionCorrection
+    detection_corrections = relationship(
+        "DetectionCorrection", back_populates="ml_model", cascade="all, delete-orphan"
     )
 
 
@@ -306,10 +318,24 @@ class DetectionCorrection(Base):
     __tablename__ = "detection_correction"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    object_detection_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("object_detection.id"), nullable=False, index=True
+    object_detection_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("object_detection.id"), nullable=True, index=True
     )
-    user_id: Mapped[int] = mapped_column(
+    # in case a new detection is added,
+    # object_detection_id will be null, and new_detection_id will be set
+    new_detection_id: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        index=True,
+    )
+    # repeat image_capture_id and det_model_id in case a new detection is added
+    image_capture_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("image_capture.id"), nullable=False, index=True
+    )
+    det_model_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("ml_model.id"), nullable=False, index=True
+    )
+    app_user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("app_user.id"), nullable=False, index=True
     )
     corrected_bbox: Mapped[dict] = mapped_column(
@@ -319,7 +345,7 @@ class DetectionCorrection(Base):
         String(255), nullable=False
     )  # e.g. 'animal'
     comment: Mapped[str] = mapped_column(Text, nullable=True)
-    created_at: Mapped[DateTime] = mapped_column(
+    last_updated: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
     )  # Timestamp when the correction was made
     action: Mapped[str] = mapped_column(
@@ -336,7 +362,37 @@ class DetectionCorrection(Base):
 
     # relationship to AppUser
     user = relationship(
-        "AppUser", back_populates="detection_corrections", foreign_keys=[user_id]
+        "AppUser", back_populates="detection_corrections", foreign_keys=[app_user_id]
+    )
+
+    # relationship to ImageCapture
+    image_capture = relationship(
+        "ImageCapture",
+        back_populates="detection_corrections",
+        foreign_keys=[image_capture_id],
+    )
+
+    # relationship to MLModel
+    ml_model = relationship(
+        "MLModel", back_populates="detection_corrections", foreign_keys=[det_model_id]
+    )
+
+    # unique constraint
+    # store only the lastest correction of user for a given object_detection_id
+    __table_args__ = (
+        UniqueConstraint(
+            "object_detection_id",
+            "app_user_id",
+            name="uq_detection_correction_obj_detection_user",
+        ),
+    )
+    # same for user and new_detection_id
+    __table_args__ = (
+        UniqueConstraint(
+            "new_detection_id",
+            "app_user_id",
+            name="uq_detection_correction_new_detection_user",
+        ),
     )
 
 

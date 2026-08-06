@@ -56,7 +56,7 @@ Methods implemented in the CRUD classes are summarized in the following table:
 | TaxonomyCRUD | . | . | . | . | . | . |  |
 | SpeciesClassificationCRUD | ✓ | . | . | . | x | . |  |
 | AppUserCRUD | ✓ | . | . | . | ✓ | . |  |
-| DetectionCorrectionCRUD | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |
+| DetectionCorrectionCRUD | ✓ | . | . | . | ✓ | . |  |
 | ClassificationCorrectionCRUD | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | DailyAnalysisResultCRUD | . | . | . | . | . | . |  |
 

@@ -16,7 +16,7 @@ class SpeciesClassificationCRUD(CRUDBase[SpeciesClassification]):
     def __init__(self):
         super().__init__(SpeciesClassification)
 
-    def add_species_classification(
+    def add(
         self,
         session: Session,
         *,

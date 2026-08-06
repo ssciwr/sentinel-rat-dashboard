@@ -356,7 +356,7 @@ def created_species_classification(
         created_object_detection()  # Ensure an object detection exists before creating a species classification
         created_taxonomy()  # Ensure a taxonomy exists before creating a species classification
         created_ml_model()  # Ensure a model exists before creating a species classification
-        return classification_crud.add_species_classification(
+        return classification_crud.add(
             get_session, **species_classification_data["create"]
         )
 
@@ -369,7 +369,7 @@ def created_multi_species_classifications(
 ):
     def _create_species_classifications():
         created_species_classification()
-        classification_crud.add_species_classification(
+        classification_crud.add(
             get_session, **species_classification_data["create_another"]
         )
         return classification_crud.select(get_session)
@@ -411,6 +411,71 @@ def created_multi_app_users(get_session, app_user_data, created_app_user):
         return app_user_crud.select(get_session)
 
     return _create_app_users
+
+
+@pytest.fixture(scope="function")
+def detection_correction_data():
+    return {
+        "create": {
+            "object_detection_id": 1,
+            "image_capture_id": 1,
+            "det_model_id": 1,
+            "app_user_id": 1,
+            "corrected_bbox": {"x": 110, "y": 110, "width": 45, "height": 45},
+            "corrected_class": "rodent",
+            "action": "update",
+            "comment": "Corrected the detected class and bounding box",
+        },
+        "create_another": {
+            "object_detection_id": None,
+            "image_capture_id": 1,
+            "det_model_id": 1,
+            "app_user_id": 1,
+            "corrected_bbox": {"x": 200, "y": 200, "width": 30, "height": 30},
+            "corrected_class": "rodent",
+            "action": "add",
+            "comment": "Adding a new detection",
+        },
+        "update": {
+            "action": "remove",
+            "comment": "Removing the detected object",
+        },
+    }
+
+
+@pytest.fixture(scope="function")
+def created_detection_correction(
+    get_session,
+    detection_correction_data,
+    created_object_detection,
+    created_image,
+    created_ml_model,
+    created_app_user,
+):
+    def _create_detection_correction():
+        created_object_detection()  # Ensure an object detection exists before creating a detection correction
+        created_image()  # Ensure an image exists before creating a detection correction
+        created_ml_model()  # Ensure a model exists before creating a detection correction
+        created_app_user()  # Ensure an app user exists before creating a detection correction
+        return detection_correction_crud.add(
+            get_session, **detection_correction_data["create"]
+        )
+
+    return _create_detection_correction
+
+
+@pytest.fixture(scope="function")
+def created_multi_detection_corrections(
+    get_session, detection_correction_data, created_detection_correction
+):
+    def _create_detection_corrections():
+        created_detection_correction()
+        detection_correction_crud.add(
+            get_session, **detection_correction_data["create_another"]
+        )
+        return detection_correction_crud.select(get_session)
+
+    return _create_detection_corrections
 
 
 @pytest.fixture(scope="function")

@@ -2,7 +2,7 @@ from dashboard.db import app_user_crud
 import pytest
 
 
-def test_add_app_user_creates_row(get_session, created_multi_app_users, app_user_data):
+def test_add_app_user_creates_row(created_multi_app_users, app_user_data):
     created_users = created_multi_app_users()
     created_user = created_users[0]
     created_another_user = created_users[1]
