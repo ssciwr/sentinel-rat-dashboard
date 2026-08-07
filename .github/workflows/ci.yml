@@ -8,6 +8,8 @@ on:
 jobs:
     test:
         runs-on: ubuntu-latest
+        env:
+            R_LIBS_USER: ${{ github.workspace }}/R-library
         services:
             postgres:
                 image: postgis/postgis:17-3.5
@@ -42,7 +44,9 @@ jobs:
               run: pip install -e ".[dev]"
 
             - name: Install R dependencies
-              uses: r-lib/actions/setup-r-dependencies@v2
+              run: |
+                mkdir -p ${{ github.workspace }}/R-library
+                Rscript install.R
 
             - name: Initialize database schema
               run: python src/dashboard/init_db.py
@@ -57,6 +61,7 @@ jobs:
             - name: Run R tests
               run: Rscript -e 'source("src/dashboard/R/db.R"); library(testthat); test_dir("tests/testthat")'
               env:
+                  R_LIBS_USER: ${{ github.workspace }}/R-library
                   POSTGRES_DB: sentinel_db
                   POSTGRES_HOST: localhost
                   POSTGRES_PORT: 5432
