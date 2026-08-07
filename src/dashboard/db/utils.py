@@ -24,7 +24,7 @@ def normalize_location(location: Any) -> str:
 
 
 def location_to_text(session, table, row_id):
-    statement = select(func.ST_AsText(table.location)).where(table.id == row_id)
+    statement = select(func.ST_AsEWKT(table.location)).where(table.id == row_id)
     return session.execute(statement).scalar_one()
 
 

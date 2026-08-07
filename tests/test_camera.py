@@ -62,6 +62,36 @@ def test_update_camera_updates_fields_and_location_history(
     )
 
 
+def test_update_camera_with_same_location_does_not_create_new_history(
+    get_session, created_camera, camera_data, location_text, point_str
+):
+    created_camera = created_camera()
+
+    # Update the camera with the same location
+    updated_camera = camera_crud.update(
+        get_session,
+        created_camera.id,
+        name=camera_data["update"]["name"],
+        description=camera_data["update"]["description"],
+        status=camera_data["update"]["status"],
+        location=camera_data["create"]["location"],  # same as initial location
+    )
+
+    assert updated_camera is not None
+    assert updated_camera.id == created_camera.id
+    assert updated_camera.name == camera_data["update"]["name"]
+    assert updated_camera.description == camera_data["update"]["description"]
+    assert updated_camera.status == camera_data["update"]["status"]
+    assert location_text(get_session, Camera, created_camera.id) == point_str.format(
+        camera_data["create"]["location"][0], camera_data["create"]["location"][1]
+    )
+
+    histories = camera_location_history_crud.get_by_camera(
+        get_session, created_camera.id
+    )
+    assert len(histories) == 1  # No new history should be added
+
+
 def test_update_camera_with_no_changes_returns_same_object(get_session, created_camera):
     created_camera = created_camera()
 

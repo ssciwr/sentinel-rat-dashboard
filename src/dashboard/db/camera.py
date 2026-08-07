@@ -97,6 +97,9 @@ class CameraCRUD(CRUDBase[Camera]):
                 )
 
                 changes["location"] = new_location
+            else:
+                # If the location hasn't changed, remove it from the changes to avoid unnecessary updates
+                del changes["location"]
 
         return super().update(
             session,
