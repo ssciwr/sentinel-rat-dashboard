@@ -43,18 +43,10 @@ jobs:
             - name: Install Python dependencies
               run: pip install -e ".[dev]"
 
-            - name: Install system dependencies for R packages
-              run: sudo apt-get update && sudo apt-get install -y libpq-dev
-
             - name: Install R dependencies
-              run: |
-                mkdir -p ${{ github.workspace }}/R-library
-                Rscript install.R
+              run: r-lib/actions/setup-r-dependencies@v2
               env:
-                R_LIBS_USER: ${{ github.workspace }}/R-library
-
-            - name: Verify R packages installed
-              run: Rscript -e 'installed <- rownames(installed.packages()); cat("Installed packages:\n"); print(installed); missing <- setdiff(c("testthat", "DBI", "RPostgres", "shiny", "pool"), installed); if (length(missing) > 0) stop(paste("Missing packages:", paste(missing, collapse=", ")))'
+                  R_LIBS_USER: ${{ github.workspace }}/R-library
 
             - name: Initialize database schema
               run: python src/dashboard/init_db.py
@@ -64,6 +56,7 @@ jobs:
             - name: Run Python pytest
               run: pytest
               env:
+                  DATABASE_URL: postgresql+psycopg://sentinel_user:sentinel_pass@localhost:5432/sentinel_db
                   TESTCONTAINERS_RYUK_DISABLED: true
 
             - name: Run R tests
