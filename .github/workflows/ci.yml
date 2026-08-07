@@ -46,6 +46,11 @@ jobs:
             - name: Prepare R library path
               run: mkdir -p ${{ github.workspace }}/R-library
 
+            - name: Install testthat package
+              run: Rscript -e 'install.packages("testthat", repos = "https://cloud.r-project.org")'
+              env:
+                  R_LIBS_USER: ${{ github.workspace }}/R-library
+
             - name: Install R dependencies
               uses: r-lib/actions/setup-r-dependencies@v2
               env:
