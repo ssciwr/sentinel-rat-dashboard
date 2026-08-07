@@ -42,7 +42,7 @@ jobs:
               run: pip install -e ".[dev]"
 
             - name: Install R dependencies
-              run: Rscript install.R
+              uses: r-lib/actions/setup-r-dependencies@v2
 
             - name: Initialize database schema
               run: python src/dashboard/init_db.py
