@@ -239,6 +239,7 @@ class CameraLocationHistoryCRUD(CRUDBase[CameraLocationHistory]):
             len(self.get_by_camera(session, camera_id)) == 1
         )  # only the most recent row remains
 
+        session.flush()  # flush the deletions to the database
         utils.commit(session)
         return True
 

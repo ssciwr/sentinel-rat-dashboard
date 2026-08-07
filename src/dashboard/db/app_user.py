@@ -2,12 +2,14 @@
 
 from typing import Any
 
-from sqlalchemy import select, DateTime, func
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .data_model import AppUser
 from dashboard.db.crud import CRUDBase
 from . import utils
+
+from datetime import datetime
 
 
 class AppUserCRUD(CRUDBase[AppUser]):
@@ -23,8 +25,8 @@ class AppUserCRUD(CRUDBase[AppUser]):
         username: str,
         full_name: str | None = None,
         is_active: bool = True,
-        created_at: DateTime | None = None,
-        updated_at: DateTime | None = None,
+        created_at: datetime | None = None,
+        updated_at: datetime | None = None,
     ) -> AppUser:
         """Insert a new app_user row and return the persisted object."""
 

@@ -10,6 +10,7 @@ from sqlalchemy import (
     Boolean,
     Enum,
     UniqueConstraint,
+    Sequence,
 )
 
 from sqlalchemy.orm import relationship, Mapped, mapped_column
@@ -215,7 +216,7 @@ class Taxonomy(Base):
     species: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     common_name: Mapped[str] = mapped_column(String(255), nullable=True)
 
-    # species, genus, and family should be unique in combination
+    # species and genus should be unique in combination
     __table_args__ = (
         UniqueConstraint("species", "genus", name="uq_taxonomy_species_genus"),
     )
@@ -324,7 +325,10 @@ class DetectionCorrection(Base):
     # in case a new detection is added,
     # object_detection_id will be null, and new_detection_id will be set
     new_detection_id: Mapped[int | None] = mapped_column(
-        Integer,
+        Integer().evaluates_none(),  # Use evaluates_none() to allow None values
+        Sequence(
+            "new_detection_id_seq"
+        ),  # Use a sequence for generating new detection IDs
         nullable=True,
         index=True,
         unique=True,
@@ -423,7 +427,13 @@ class ClassificationCorrection(Base):
         index=True,
     )
     new_classification_id: Mapped[int | None] = mapped_column(
-        Integer, nullable=True, index=True
+        Integer().evaluates_none(),  # Use evaluates_none() to allow None values
+        Sequence(
+            "new_classification_id_seq"
+        ),  # Use a sequence for generating new classification IDs
+        nullable=True,
+        unique=True,
+        index=True,
     )
     app_user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("app_user.id"), nullable=False, index=True

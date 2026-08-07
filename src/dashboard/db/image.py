@@ -23,7 +23,7 @@ class ImageCRUD(CRUDBase[ImageCapture]):
         *,
         camera_id: int,
         image_path: str,
-        location: Any | None = None,
+        location: Any,
         captured_at: datetime | None = None,
         uploaded_at: datetime | None = None,
         tobe_deleted: bool = False,

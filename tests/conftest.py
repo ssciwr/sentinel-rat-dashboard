@@ -29,13 +29,13 @@ from dashboard.db import (
 
 @pytest.fixture
 def point_str():
-    return "POINT({} {})"
+    return "SRID=4326;POINT({} {})"
 
 
 @pytest.fixture
 def location_text():
     def _location_text(session, table, row_id):
-        statement = select(func.ST_AsText(table.location)).where(table.id == row_id)
+        statement = select(func.ST_AsEWKT(table.location)).where(table.id == row_id)
         return session.execute(statement).scalar_one()
 
     return _location_text
@@ -89,7 +89,8 @@ def get_session(get_engine_with_tables):
 @pytest.fixture(scope="function", autouse=True)
 def clean_db(get_session):
     yield
-    get_session.execute(text("""
+    get_session.execute(
+        text("""
             TRUNCATE TABLE
                 camera_location_history,
                 camera,
@@ -102,8 +103,11 @@ def clean_db(get_session):
                 detection_correction,
                 classification_correction,
                 daily_analysis_result
-            RESTART IDENTITY CASCADE
-            """))
+            RESTART IDENTITY CASCADE;
+            ALTER SEQUENCE new_detection_id_seq RESTART WITH 1;
+            ALTER SEQUENCE new_classification_id_seq RESTART WITH 1;
+            """)
+    )  # restart identity restart owned sequences, the ALTER commands for manually created sequences
     get_session.commit()
 
 

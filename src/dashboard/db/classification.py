@@ -2,10 +2,13 @@
 
 from typing import Literal, Any
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, Sequence
 from sqlalchemy.orm import Session
 
-from .data_model import SpeciesClassification, ClassificationCorrection
+from .data_model import (
+    SpeciesClassification,
+    ClassificationCorrection,
+)
 from dashboard.db.crud import CRUDBase
 from . import utils
 
@@ -98,13 +101,11 @@ class ClassificationCorrectionCRUD(CRUDBase[ClassificationCorrection]):
                     "for a newly added detection correction, "
                 )
 
-            stmt = select(
-                func.max(ClassificationCorrection.new_classification_id)
-            ).where(ClassificationCorrection.action == "add")
-            latest_new_class_id = session.execute(stmt).scalar()
-            classification_correction.new_classification_id = (
-                latest_new_class_id + 1 if latest_new_class_id is not None else 1
+            classification_seq = Sequence("new_classification_id_seq")
+            next_new_classification_id = session.scalar(
+                select(classification_seq.next_value())
             )
+            classification_correction.new_classification_id = next_new_classification_id
         elif species_classification_id is not None and action != "add":
             # no new classification is added
             if new_obj_det_id is not None:

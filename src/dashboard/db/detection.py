@@ -2,7 +2,7 @@
 
 from typing import Any, Literal
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, Sequence
 from sqlalchemy.orm import Session
 
 from .data_model import ObjectDetection, DetectionCorrection
@@ -107,13 +107,9 @@ class DetectionCorrectionCRUD(CRUDBase[DetectionCorrection]):
         else:
             # action is "add" and object_detection_id is None
             # get the next sequence value for new_detection_id
-            stmt = select(func.max(DetectionCorrection.new_detection_id)).where(
-                DetectionCorrection.action == "add",
-            )
-            latest_new_det_id = session.execute(stmt).scalar()
-            detection_correction.new_detection_id = (
-                latest_new_det_id + 1 if latest_new_det_id is not None else 1
-            )
+            detection_seq = Sequence("new_detection_id_seq")
+            next_new_detection_id = session.scalar(select(detection_seq.next_value()))
+            detection_correction.new_detection_id = next_new_detection_id
 
         if last_updated is not None:
             detection_correction.last_updated = last_updated
