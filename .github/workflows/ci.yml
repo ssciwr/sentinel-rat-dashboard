@@ -43,11 +43,11 @@ jobs:
             - name: Install Python dependencies
               run: pip install -e ".[dev]"
 
-            - name: Install R dependencies
+            - name: Prepare R library path
+              run: mkdir -p ${{ github.workspace }}/R-library
 
-              run: |
-                  mkdir -p ${{ github.workspace }}/R-library
-                  r-lib/actions/setup-r-dependencies@v2
+            - name: Install R dependencies
+              uses: r-lib/actions/setup-r-dependencies@v2
               env:
                   R_LIBS_USER: ${{ github.workspace }}/R-library
 
