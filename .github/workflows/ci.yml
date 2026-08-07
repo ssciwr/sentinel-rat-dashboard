@@ -8,6 +8,21 @@ on:
 jobs:
     test:
         runs-on: ubuntu-latest
+        services:
+            postgres:
+                image: postgis/postgis:17-3.5
+                env:
+                    POSTGRES_DB: sentinel_db
+                    POSTGRES_USER: sentinel_user
+                    POSTGRES_PASSWORD: sentinel_pass
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd pg_isready
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
@@ -18,10 +33,32 @@ jobs:
                   python-version: "3.13"
                   cache: "pip"
 
-            - name: Install dependencies
+            - name: Set up R
+              uses: r-lib/actions/setup-r@v2
+              with:
+                  r-version: "4.4"
+
+            - name: Install Python dependencies
               run: pip install -e ".[dev]"
 
-            - name: Run pytest
+            - name: Install R dependencies
+              run: Rscript install.R
+
+            - name: Initialize database schema
+              run: python src/dashboard/init_db.py
+              env:
+                  DATABASE_URL: postgresql+psycopg://sentinel_user:sentinel_pass@localhost:5432/sentinel_db
+
+            - name: Run Python pytest
               run: pytest
               env:
                   TESTCONTAINERS_RYUK_DISABLED: true
+
+            - name: Run R tests
+              run: Rscript -e 'source("src/dashboard/R/db.R"); library(testthat); test_dir("tests/testthat")'
+              env:
+                  POSTGRES_DB: sentinel_db
+                  POSTGRES_HOST: localhost
+                  POSTGRES_PORT: 5432
+                  POSTGRES_USER: sentinel_user
+                  POSTGRES_PASSWORD: sentinel_pass
