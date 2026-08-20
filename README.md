@@ -135,3 +135,9 @@ Finally, run the R tests:
 ```bash
 Rscript -e 'source("src/dashboard/R/db.R"); library(testthat); test_dir("tests/testthat")'
 ```
+
+Stop and remove the database container when done:
+```bash
+docker stop sentinel-postgres
+docker rm sentinel-postgres
+```
