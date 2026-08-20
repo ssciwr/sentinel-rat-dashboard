@@ -61,3 +61,77 @@ Methods implemented in the CRUD classes are summarized in the following table:
 | DailyAnalysisResultCRUD | . | . | . | . | . | . |  |
 
 
+## Development
+### Install dependencies
+
+For Python depencencies, run the following command:
+```bash
+pip install -e .[dev]
+```
+
+For R dependencies, make sure you have R and its dependencies installed:
+```bash
+sudo apt update
+sudo apt install r-base
+sudo apt-get install -y \
+            libpq-dev \
+            libssl-dev \
+            libuv1-dev
+```
+
+Create a folder to install R packages, if needed:
+```bash
+mkdir -p ~/R/library
+export R_LIBS_USER=~/R/library
+```
+
+Then, install R packages:
+```bash
+Rscript install.R
+```
+
+### Testing
+
+For Python tests, the PostgreSQL database is handled by `testcontainers`'s `PostgresContainer` as configured in `tests/conftest.py`. To run the tests, use the following command:
+```bash
+pytest tests/
+```
+
+To run R tests, we first need to set up the database. **There might be a simpler way to do this (TBU.)**
+```bash
+docker run --name sentinel-postgres \
+  -e POSTGRES_DB=sentinel_db \
+  -e POSTGRES_USER=sentinel_user \
+  -e POSTGRES_PASSWORD=sentinel_pass \
+  -p 5432:5432 \
+  -d postgis/postgis:17-3.5
+```
+
+Check if the database is ready:
+```bash
+docker exec sentinel-postgres pg_isready -U sentinel_user -d sentinel_db
+```
+
+You should see the following output (on Linux):
+```
+/var/run/postgresql:5432 - accepting connections
+```
+
+Then set the environment variables for the database connection:
+```bash
+export POSTGRES_HOST=localhost
+export POSTGRES_PORT=5432
+export POSTGRES_DB=sentinel_db
+export POSTGRES_USER=sentinel_user
+export POSTGRES_PASSWORD=sentinel_pass
+```
+
+Initialize the database schema:
+```bash
+python src/dashboard/init_db.py
+```
+
+Finally, run the R tests:
+```bash
+Rscript -e 'source("src/dashboard/R/db.R"); library(testthat); test_dir("tests/testthat")'
+```
