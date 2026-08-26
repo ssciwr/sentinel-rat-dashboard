@@ -212,8 +212,8 @@ class Taxonomy(Base):
     class_name: Mapped[str] = mapped_column(String(255), nullable=True)
     order: Mapped[str] = mapped_column(String(255), nullable=True)
     family: Mapped[str] = mapped_column(String(255), nullable=True)
-    genus: Mapped[str] = mapped_column(String(255), nullable=True)
-    species: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    genus: Mapped[str] = mapped_column(String(255), nullable=False)
+    species: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
     common_name: Mapped[str] = mapped_column(String(255), nullable=True)
 
     # species and genus should be unique in combination
