@@ -1,5 +1,6 @@
-from dashboard.db import detection_crud, detection_correction_crud
 import pytest
+
+from dashboard.db import detection_correction_crud, detection_crud
 
 
 # tests for ObjectDetectionCRUD

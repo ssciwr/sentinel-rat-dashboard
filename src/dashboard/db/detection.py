@@ -1,15 +1,15 @@
 """CRUD helpers for the object_detection table"""
 
+from datetime import datetime
 from typing import Any, Literal
 
-from sqlalchemy import select, func, Sequence
+from sqlalchemy import Sequence, func, select
 from sqlalchemy.orm import Session
 
-from .data_model import ObjectDetection, DetectionCorrection
 from dashboard.db.crud import CRUDBase
-from . import utils
 
-from datetime import datetime
+from . import utils
+from .data_model import DetectionCorrection, ObjectDetection
 
 
 class ObjectDetectionCRUD(CRUDBase[ObjectDetection]):

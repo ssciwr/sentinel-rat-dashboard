@@ -1,13 +1,8 @@
 """CRUD helpers for the taxonomy table"""
 
-from typing import Any
-
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from dashboard.db.crud import CRUDBase
 
 from .data_model import Taxonomy
-from dashboard.db.crud import CRUDBase
-from . import utils
 
 
 class TaxonomyCRUD(CRUDBase[Taxonomy]):

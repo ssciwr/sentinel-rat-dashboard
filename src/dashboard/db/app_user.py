@@ -1,15 +1,15 @@
 """CRUD helpers for the app_user table"""
 
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from .data_model import AppUser
 from dashboard.db.crud import CRUDBase
-from . import utils
 
-from datetime import datetime
+from . import utils
+from .data_model import AppUser
 
 
 class AppUserCRUD(CRUDBase[AppUser]):

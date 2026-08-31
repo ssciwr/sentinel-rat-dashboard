@@ -1,14 +1,15 @@
 """CRUD helpers for the image table"""
 
+from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .data_model import ImageCapture
 from dashboard.db.crud import CRUDBase
+
 from . import utils
-from datetime import datetime
+from .data_model import ImageCapture
 
 
 class ImageCRUD(CRUDBase[ImageCapture]):

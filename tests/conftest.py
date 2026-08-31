@@ -1,27 +1,25 @@
 # tests/conftest.py
 
+from datetime import UTC, datetime
+
 import pytest
-from sqlalchemy import create_engine, text, select, func
+from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.orm import sessionmaker
-
-from dashboard.db.data_model import Base
-
 from testcontainers.community.postgres import PostgresContainer
 
-from datetime import datetime, UTC
-
 from dashboard.db import (
+    app_user_crud,
     camera_crud,
+    classification_correction_crud,
+    classification_crud,
+    daily_analysis_result_crud,
+    detection_correction_crud,
+    detection_crud,
     image_crud,
     ml_model_crud,
-    detection_crud,
-    detection_correction_crud,
     taxonomy_crud,
-    classification_crud,
-    classification_correction_crud,
-    app_user_crud,
-    daily_analysis_result_crud,
 )
+from dashboard.db.data_model import Base
 
 # for local docker desktop,
 # environ["DOCKER_HOST"] is "unix:///home/[user]/.docker/desktop/docker.sock"

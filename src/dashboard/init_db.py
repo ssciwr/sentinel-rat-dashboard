@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import logging
-import os
 import time
-from urllib.parse import urlparse
 
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 
-from dashboard.db.database import engine, Base
+from dashboard.db.database import Base, engine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

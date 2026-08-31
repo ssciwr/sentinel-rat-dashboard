@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from typing import TypeVar, Generic, Any, Set
+from typing import Any, Generic, TypeVar
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from dashboard.db.database import Base
+
 from . import utils
 
 ModelType = TypeVar("ModelType", bound=Base)
 
 
 class CRUDBase(Generic[ModelType]):
-
     def __init__(self, model: type[ModelType]):
         """CRUD helper for a specific SQLAlchemy model class."""
 
@@ -66,7 +66,7 @@ class CRUDBase(Generic[ModelType]):
         session: Session,
         id: int,
         *,
-        allowed_fields: Set[str] | None = None,
+        allowed_fields: set[str] | None = None,
         **changes: Any,
     ) -> ModelType | None:
         """Update a row and return the refreshed object, or None if missing."""

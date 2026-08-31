@@ -1,14 +1,14 @@
 import pytest
 
 from dashboard.db import (
-    camera,
-    taxonomy,
     analysis_result,
-    ml_model,
-    detection,
-    classification,
     app_user,
+    camera,
+    classification,
+    detection,
     image,
+    ml_model,
+    taxonomy,
 )
 
 

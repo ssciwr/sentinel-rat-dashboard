@@ -1,6 +1,7 @@
+import pytest
+
 from dashboard.db import image_crud
 from dashboard.db.data_model import ImageCapture
-import pytest
 
 
 def test_add_image_capture_creates_row(

@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .data_model import Camera, CameraLocationHistory
 from dashboard.db.crud import CRUDBase
+
 from . import utils
-from datetime import datetime
+from .data_model import Camera, CameraLocationHistory
 
 
 # CRUD helpers for the camera table

@@ -1,6 +1,7 @@
+import pytest
+
 from dashboard.db import camera_crud, camera_location_history_crud
 from dashboard.db.data_model import Camera, CameraLocationHistory
-import pytest
 
 
 def test_add_camera_creates_camera_and_initial_history(
@@ -56,7 +57,9 @@ def test_update_camera_updates_fields_and_location_history(
     assert histories[0].valid_to is None  # most recent history
     assert histories[1].valid_to is not None
     assert location_text(
-        get_session, CameraLocationHistory, histories[0].id  # most recent history
+        get_session,
+        CameraLocationHistory,
+        histories[0].id,  # most recent history
     ) == point_str.format(
         camera_data["update"]["location"][0], camera_data["update"]["location"][1]
     )
@@ -149,9 +152,7 @@ def test_history_update_valid_to_most_recent_history(
 
     updated_history = camera_location_history_crud.get_by_camera(
         get_session, created_camera.id
-    )[
-        1
-    ]  # the older history should now have a valid_to timestamp
+    )[1]  # the older history should now have a valid_to timestamp
 
     assert updated_history is not None
     assert updated_history.valid_to is not None

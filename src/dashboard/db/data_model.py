@@ -1,23 +1,19 @@
+from geoalchemy2 import Geometry
 from sqlalchemy import (
-    Column,
+    Boolean,
+    DateTime,
+    Enum,
+    Float,
     ForeignKey,
     Integer,
-    String,
-    DateTime,
-    Text,
-    Float,
-    func,
-    Boolean,
-    Enum,
-    UniqueConstraint,
     Sequence,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
 )
-
-from sqlalchemy.orm import relationship, Mapped, mapped_column
-
 from sqlalchemy.dialects.postgresql import JSONB
-
-from geoalchemy2 import Geometry
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
 

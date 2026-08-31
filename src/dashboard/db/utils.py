@@ -1,7 +1,9 @@
 from __future__ import annotations
+
 from typing import Any
+
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func
 
 CRS = 4326
 STR_POINT = "SRID={};POINT({} {})"

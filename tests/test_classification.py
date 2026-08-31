@@ -1,5 +1,6 @@
-from dashboard.db import classification_crud, classification_correction_crud
 import pytest
+
+from dashboard.db import classification_correction_crud, classification_crud
 
 
 # test for SpeciesClassificationCRUD

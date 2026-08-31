@@ -1,8 +1,9 @@
 """Database connection configuration"""
 
 import os
+
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 POSTGRES_DB = os.getenv("POSTGRES_DB", "sentinel_db")
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")

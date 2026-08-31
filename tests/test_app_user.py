@@ -1,5 +1,4 @@
 from dashboard.db import app_user_crud
-import pytest
 
 
 def test_add_app_user_creates_row(created_multi_app_users, app_user_data):
