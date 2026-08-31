@@ -58,15 +58,32 @@ jobs:
           DATABASE_URL: postgresql+psycopg://sentinel_user:sentinel_pass@localhost:5432/sentinel_db
 
       - name: Run Python pytest
-        run: pytest
+        run: pytest --cov --cov-branch --cov-report=xml:coverage-python.xml
+
         env:
           TESTCONTAINERS_RYUK_DISABLED: true
 
-      - name: Run R tests
-        run: Rscript -e 'source("src/dashboard/R/db.R"); library(testthat); test_dir("tests/testthat")'
+      - name: Run R tests with coverage
+        run: |
+          Rscript -e '
+            library(covr)
+            library(testthat)
+            cov <- file_coverage(
+              "src/dashboard/R/db.R",
+              test_files = "tests/testthat/test-db.R"
+            )
+            to_cobertura(cov, filename = "coverage-r.xml")
+          '
         env:
           POSTGRES_DB: sentinel_db
           POSTGRES_HOST: localhost
           POSTGRES_PORT: 5432
           POSTGRES_USER: sentinel_user
           POSTGRES_PASSWORD: sentinel_pass
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: ssciwr/sentinel-rat-dashboard
+          files: coverage-python.xml,coverage-r.xml

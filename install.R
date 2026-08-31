@@ -5,5 +5,7 @@ install.packages(c(
   "dplyr",
   "ggplot2",
   "pool",
-  "testthat"
+  "testthat",
+  "covr",
+  "xml2"
 ), repos = "https://cloud.r-project.org")
