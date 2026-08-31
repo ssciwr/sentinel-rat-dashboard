@@ -1,3 +1,5 @@
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/ssciwr/sentinel-rat-dashboard/main.svg)](https://results.pre-commit.ci/latest/github/ssciwr/sentinel-rat-dashboard/main)
+
 # Sentinel Rat Dashboard
 
 Work in progress...
