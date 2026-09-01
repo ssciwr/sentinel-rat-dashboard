@@ -136,7 +136,7 @@ def test_update_fields(request, get_session, crud, fixture_name, sample_data):
     )
     assert updated_item_no_changes is not None
     assert updated_item_no_changes.id == created_item.id
-    for field in sample_data["create"].keys():
+    for field in sample_data["create"]:
         actual_value = getattr(updated_item_no_changes, field)
         expected_value = getattr(created_item, field)
         assert actual_value == expected_value

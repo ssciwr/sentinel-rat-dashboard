@@ -17,10 +17,10 @@ def normalize_location(location: Any) -> str:
 
     try:
         lon, lat = location
-    except Exception:
+    except (TypeError, ValueError) as exc:
         raise ValueError(
             f"Invalid location: {location}. Must be a string or a (lon, lat) tuple."
-        )
+        ) from exc
 
     return STR_POINT.format(CRS, lon, lat)
 

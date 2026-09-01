@@ -6,3 +6,17 @@ from .detection import detection_correction_crud, detection_crud
 from .image import image_crud
 from .ml_model import ml_model_crud
 from .taxonomy import taxonomy_crud
+
+__all__ = [
+    "app_user_crud",
+    "camera_crud",
+    "camera_location_history_crud",
+    "classification_correction_crud",
+    "classification_crud",
+    "daily_analysis_result_crud",
+    "detection_correction_crud",
+    "detection_crud",
+    "image_crud",
+    "ml_model_crud",
+    "taxonomy_crud",
+]
