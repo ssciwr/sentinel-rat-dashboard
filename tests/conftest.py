@@ -71,7 +71,7 @@ def get_engine_without_tables(get_docker_image):
         Base.metadata.drop_all(engine)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def get_session(get_engine_with_tables):
     connection = get_engine_with_tables.connect()
     session_class = sessionmaker(bind=connection)
@@ -84,7 +84,7 @@ def get_session(get_engine_with_tables):
     connection.close()
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(autouse=True)
 def clean_db(get_session):
     yield
     get_session.execute(
@@ -109,7 +109,7 @@ def clean_db(get_session):
     get_session.commit()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def camera_data():
     return {
         "create": {
@@ -134,7 +134,7 @@ def camera_data():
     }
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def created_camera(get_session, camera_data):
     def _create_camera():
 
@@ -143,7 +143,7 @@ def created_camera(get_session, camera_data):
     return _create_camera
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def created_multi_cameras(get_session, camera_data, created_camera):
     def _create_cameras():
         created_camera()
@@ -153,7 +153,7 @@ def created_multi_cameras(get_session, camera_data, created_camera):
     return _create_cameras
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def image_data():
     return {
         "create": {
@@ -176,7 +176,7 @@ def image_data():
     }
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def created_image(get_session, created_camera, image_data):
     def _create_image():
         created_camera()  # Ensure a camera exists before creating an image
@@ -185,7 +185,7 @@ def created_image(get_session, created_camera, image_data):
     return _create_image
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def created_multi_images(get_session, image_data, created_image):
     def _create_images():
         created_image()
@@ -195,7 +195,7 @@ def created_multi_images(get_session, image_data, created_image):
     return _create_images
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def ml_model_data():
     return {
         "create": {
@@ -217,7 +217,7 @@ def ml_model_data():
     }
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def created_ml_model(get_session, ml_model_data):
     def _create_ml_model():
         return ml_model_crud.add(get_session, **ml_model_data["create"])
@@ -225,7 +225,7 @@ def created_ml_model(get_session, ml_model_data):
     return _create_ml_model
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def created_multi_ml_models(get_session, ml_model_data, created_ml_model):
     def _create_ml_models():
         created_ml_model()
@@ -235,7 +235,7 @@ def created_multi_ml_models(get_session, ml_model_data, created_ml_model):
     return _create_ml_models
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def object_detection_data():
     return {
         "create": {
@@ -259,7 +259,7 @@ def object_detection_data():
     }
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def created_object_detection(
     get_session, object_detection_data, created_image, created_ml_model
 ):
@@ -271,7 +271,7 @@ def created_object_detection(
     return _create_object_detection
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def created_multi_object_detections(
     get_session, object_detection_data, created_object_detection
 ):
@@ -283,7 +283,7 @@ def created_multi_object_detections(
     return _create_object_detections
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def taxonomy_data():
     return {
         "create": {
@@ -307,7 +307,7 @@ def taxonomy_data():
     }
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def created_taxonomy(get_session, taxonomy_data):
     def _create_taxonomy():
         return taxonomy_crud.add(get_session, **taxonomy_data["create"])
@@ -315,7 +315,7 @@ def created_taxonomy(get_session, taxonomy_data):
     return _create_taxonomy
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def created_multi_taxonomies(get_session, taxonomy_data, created_taxonomy):
     def _create_taxonomies():
         created_taxonomy()
@@ -325,7 +325,7 @@ def created_multi_taxonomies(get_session, taxonomy_data, created_taxonomy):
     return _create_taxonomies
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def species_classification_data():
     return {
         "create": {
@@ -346,7 +346,7 @@ def species_classification_data():
     }
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def created_species_classification(
     get_session,
     species_classification_data,
@@ -365,7 +365,7 @@ def created_species_classification(
     return _create_species_classification
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def created_multi_species_classifications(
     get_session, species_classification_data, created_species_classification
 ):
@@ -379,7 +379,7 @@ def created_multi_species_classifications(
     return _create_species_classifications
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def app_user_data():
     return {
         "create": {
@@ -397,7 +397,7 @@ def app_user_data():
     }
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def created_app_user(get_session, app_user_data):
     def _create_app_user():
         return app_user_crud.add(get_session, **app_user_data["create"])
@@ -405,7 +405,7 @@ def created_app_user(get_session, app_user_data):
     return _create_app_user
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def created_multi_app_users(get_session, app_user_data, created_app_user):
     def _create_app_users():
         created_app_user()
@@ -415,7 +415,7 @@ def created_multi_app_users(get_session, app_user_data, created_app_user):
     return _create_app_users
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def detection_correction_data():
     return {
         "create": {
@@ -445,7 +445,7 @@ def detection_correction_data():
     }
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def created_detection_correction(
     get_session,
     detection_correction_data,
@@ -466,7 +466,7 @@ def created_detection_correction(
     return _create_detection_correction
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def created_multi_detection_corrections(
     get_session, detection_correction_data, created_detection_correction
 ):
@@ -480,7 +480,7 @@ def created_multi_detection_corrections(
     return _create_detection_corrections
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def classification_correction_data():
     return {
         "create": {
@@ -506,7 +506,7 @@ def classification_correction_data():
     }
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def created_classification_correction(
     get_session,
     created_multi_detection_corrections,
@@ -523,7 +523,7 @@ def created_classification_correction(
     return _create_classification_correction
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def created_multi_classification_corrections(
     get_session,
     classification_correction_data,
@@ -539,7 +539,7 @@ def created_multi_classification_corrections(
     return _create_classification_corrections
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def daily_analysis_result_data():
     return {
         "create": {
@@ -565,7 +565,7 @@ def daily_analysis_result_data():
     }
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def created_daily_analysis_result(
     get_session,
     daily_analysis_result_data,
@@ -582,7 +582,7 @@ def created_daily_analysis_result(
     return _create_daily_analysis_result
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def created_multi_daily_analysis_results(
     get_session, daily_analysis_result_data, created_daily_analysis_result
 ):

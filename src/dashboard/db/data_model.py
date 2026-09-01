@@ -17,6 +17,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
 
+OWNED_RELATIONSHIP_CASCADE = "all, delete-orphan"
+
 
 class Camera(Base):
     """Camera table"""
@@ -40,17 +42,21 @@ class Camera(Base):
 
     # relationship to CameraLocationHistory
     location_history = relationship(
-        "CameraLocationHistory", back_populates="camera", cascade="all, delete-orphan"
+        "CameraLocationHistory",
+        back_populates="camera",
+        cascade=OWNED_RELATIONSHIP_CASCADE,
     )
 
     # relationship to ImageCapture
     images = relationship(
-        "ImageCapture", back_populates="camera", cascade="all, delete-orphan"
+        "ImageCapture", back_populates="camera", cascade=OWNED_RELATIONSHIP_CASCADE
     )
 
     # relationship to DailyAnalysisResult
     daily_analysis_results = relationship(
-        "DailyAnalysisResult", back_populates="camera", cascade="all, delete-orphan"
+        "DailyAnalysisResult",
+        back_populates="camera",
+        cascade=OWNED_RELATIONSHIP_CASCADE,
     )
 
 
@@ -107,14 +113,16 @@ class ImageCapture(Base):
 
     # relationship to ObjectDetection
     object_detections = relationship(
-        "ObjectDetection", back_populates="image_capture", cascade="all, delete-orphan"
+        "ObjectDetection",
+        back_populates="image_capture",
+        cascade=OWNED_RELATIONSHIP_CASCADE,
     )
 
     # relationship to DetectionCorrection
     detection_corrections = relationship(
         "DetectionCorrection",
         back_populates="image_capture",
-        cascade="all, delete-orphan",
+        cascade=OWNED_RELATIONSHIP_CASCADE,
     )
 
 
@@ -135,15 +143,19 @@ class MLModel(Base):
 
     # relationships to ObjectDetection and SpeciesClassification
     object_detections = relationship(
-        "ObjectDetection", back_populates="ml_model", cascade="all, delete-orphan"
+        "ObjectDetection", back_populates="ml_model", cascade=OWNED_RELATIONSHIP_CASCADE
     )
     species_classifications = relationship(
-        "SpeciesClassification", back_populates="ml_model", cascade="all, delete-orphan"
+        "SpeciesClassification",
+        back_populates="ml_model",
+        cascade=OWNED_RELATIONSHIP_CASCADE,
     )
 
     # relationship to DetectionCorrection
     detection_corrections = relationship(
-        "DetectionCorrection", back_populates="ml_model", cascade="all, delete-orphan"
+        "DetectionCorrection",
+        back_populates="ml_model",
+        cascade=OWNED_RELATIONSHIP_CASCADE,
     )
 
 
@@ -186,14 +198,14 @@ class ObjectDetection(Base):
     species_classifications = relationship(
         "SpeciesClassification",
         back_populates="object_detection",
-        cascade="all, delete-orphan",
+        cascade=OWNED_RELATIONSHIP_CASCADE,
     )
 
     # relationship to DetectionCorrection
     detection_corrections = relationship(
         "DetectionCorrection",
         back_populates="object_detection",
-        cascade="all, delete-orphan",
+        cascade=OWNED_RELATIONSHIP_CASCADE,
     )
 
 
@@ -219,19 +231,23 @@ class Taxonomy(Base):
 
     # relationship to SpeciesClassification
     species_classifications = relationship(
-        "SpeciesClassification", back_populates="taxonomy", cascade="all, delete-orphan"
+        "SpeciesClassification",
+        back_populates="taxonomy",
+        cascade=OWNED_RELATIONSHIP_CASCADE,
     )
 
     # relationship to ClassificationCorrection
     classification_corrections = relationship(
         "ClassificationCorrection",
         back_populates="taxonomy",
-        cascade="all, delete-orphan",
+        cascade=OWNED_RELATIONSHIP_CASCADE,
     )
 
     # relationship to DailyAnalysisResult
     daily_analysis_results = relationship(
-        "DailyAnalysisResult", back_populates="taxonomy", cascade="all, delete-orphan"
+        "DailyAnalysisResult",
+        back_populates="taxonomy",
+        cascade=OWNED_RELATIONSHIP_CASCADE,
     )
 
 
@@ -278,7 +294,7 @@ class SpeciesClassification(Base):
     classification_corrections = relationship(
         "ClassificationCorrection",
         back_populates="species_classification",
-        cascade="all, delete-orphan",
+        cascade=OWNED_RELATIONSHIP_CASCADE,
     )
 
 
@@ -300,12 +316,14 @@ class AppUser(Base):
 
     # relationship to DetectionCorrection
     detection_corrections = relationship(
-        "DetectionCorrection", back_populates="user", cascade="all, delete-orphan"
+        "DetectionCorrection", back_populates="user", cascade=OWNED_RELATIONSHIP_CASCADE
     )
 
     # relationship to ClassificationCorrection
     classification_corrections = relationship(
-        "ClassificationCorrection", back_populates="user", cascade="all, delete-orphan"
+        "ClassificationCorrection",
+        back_populates="user",
+        cascade=OWNED_RELATIONSHIP_CASCADE,
     )
 
 
@@ -386,7 +404,7 @@ class DetectionCorrection(Base):
             "DetectionCorrection.new_detection_id == "
             "foreign(ClassificationCorrection.new_obj_det_id)"
         ),
-        cascade="all, delete-orphan",
+        cascade=OWNED_RELATIONSHIP_CASCADE,
     )
 
     # unique constraint

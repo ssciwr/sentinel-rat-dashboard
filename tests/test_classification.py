@@ -116,9 +116,9 @@ def test_add_classification_correction_with_warning(
     # not None new_obj_det_id
     sample_data = classification_correction_data["create"].copy()
     sample_data["new_obj_det_id"] = 1
+    created_multi_detection_corrections()
+    created_species_classification()
     with pytest.warns(UserWarning):
-        created_multi_detection_corrections()
-        created_species_classification()
         add_item = classification_correction_crud.add(get_session, **sample_data)
 
     assert add_item.new_classification_id is None
