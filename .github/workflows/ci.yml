@@ -51,12 +51,20 @@ jobs:
             libcurl4-openssl-dev \
             libxml2-dev \
             libgit2-dev \
-            libpq-dev \
             pkg-config \
             python3-dev
 
+      - name: Create folder for R packages
+        run: |
+          mkdir -p $HOME/R/library
+          export R_LIBS_USER=$HOME/R/library
+
       - name: Install R dependencies
-        run: Rscript install.R
+        run: |
+          Rscript install.R
+          Rscript -e 'library(reticulate); packageVersion("reticulate")'
+        env:
+          R_LIBS_USER: $HOME/R/library
 
       - name: Initialize database schema
         run: python src/dashboard/init_db.py
