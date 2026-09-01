@@ -49,7 +49,11 @@ jobs:
             libssl-dev \
             libuv1-dev \
             libcurl4-openssl-dev \
-            libxml2-dev
+            libxml2-dev \
+            libgit2-dev \
+            libpq-dev \
+            pkg-config \
+            python3-dev
 
       - name: Install R dependencies
         run: Rscript install.R
@@ -72,7 +76,11 @@ jobs:
             library(testthat)
             cov <- file_coverage(
               "src/dashboard/R/db.R",
-              test_files = "tests/testthat/test-db.R"
+              test_files = list.files(
+                "tests/testthat",
+                pattern = "^test.*\\.R$",
+                full.names = TRUE
+              )
             )
             to_cobertura(cov, filename = "coverage-r.xml")
           '
