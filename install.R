@@ -7,5 +7,6 @@ install.packages(c(
   "pool",
   "testthat",
   "covr",
-  "xml2"
+  "xml2",
+  "reticulate"
 ), repos = "https://cloud.r-project.org")
