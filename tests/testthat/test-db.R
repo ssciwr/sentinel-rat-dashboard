@@ -1,5 +1,5 @@
-test_that("fetch_analyses returns empty list initially", {
-  result <- fetch_analyses()
-  expect_type(result, "list")
-  expect_length(result, 0)
+test_that("fetch_detections returns empty data frame initially", {
+  result <- fetch_detections()
+  expect_s3_class(result, "data.frame")
+  expect_equal(nrow(result), 0)
 })

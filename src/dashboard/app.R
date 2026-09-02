@@ -1,8 +1,6 @@
 library(shiny)
 library(DBI)
 
-source("R/db.R")
-
 ui <- fluidPage(
   titlePanel("SENTINEL-RAT Dashboard"),
   mainPanel(
@@ -11,13 +9,18 @@ ui <- fluidPage(
 )
 
 server <- function(input, output, session) {
+  db_session <- create_db_session()
+
+  session$onSessionEnded(function() {
+    db_session$close()
+  })
 
   output$results <- renderTable({
 
     # Re-run this code every 1 seconds
     invalidateLater(1000, session)
 
-    rows <- fetch_analyses()
+    rows <- fetch_detections(db_session)
 
     if (is.null(rows) || nrow(rows) == 0) {
       return(data.frame(Message = "No analysis results yet."))

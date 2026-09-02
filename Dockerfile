@@ -18,7 +18,7 @@ RUN Rscript /tmp/install.R
 
 COPY src/ /srv/shiny-server/
 
-RUN pip3 install --no-cache-dir psycopg2-binary
+RUN pip3 install --no-cache-dir "psycopg[binary]"
 
 EXPOSE 3838
 
