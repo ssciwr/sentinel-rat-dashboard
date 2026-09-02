@@ -37,6 +37,7 @@ jobs:
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: "4.4"
+          use-public-rspm: true
 
       - name: Install Python dependencies
         run: pip install -e ".[dev]"
@@ -45,14 +46,15 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
+            libpng-dev \
             libpq-dev \
             libssl-dev \
             libuv1-dev \
             libcurl4-openssl-dev \
             libxml2-dev \
             libgit2-dev \
-            pkg-config \
-            python3-dev
+            python3-dev \
+            python3-pip
 
       - name: Install R dependencies
         run: |
