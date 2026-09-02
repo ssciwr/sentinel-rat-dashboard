@@ -64,6 +64,12 @@ Methods implemented in the CRUD classes are summarized in the following table:
 
 
 ## Development
+
+Currently, we are using:
+
+* Python 3.13
+* R 4.4
+
 ### Install dependencies
 
 For Python depencencies, run the following command:
@@ -76,9 +82,15 @@ For R dependencies, make sure you have R and its dependencies installed:
 sudo apt update
 sudo apt install r-base
 sudo apt-get install -y \
+            libpng-dev \
             libpq-dev \
             libssl-dev \
-            libuv1-dev
+            libuv1-dev \
+            libcurl4-openssl-dev \
+            libxml2-dev \
+            libgit2-dev \
+            python3-dev \
+            python3-pip
 ```
 
 Create a folder to install R packages, if needed:
