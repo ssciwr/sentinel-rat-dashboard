@@ -46,12 +46,27 @@ db_module <- reticulate::import("dashboard.db")
 db_database_module <- reticulate::import("dashboard.db.database")
 
 detection_crud <- db_module$detection_crud
+species_roles <- db_module$species_roles
+daily_analysis_result_crud <- db_module$daily_analysis_result_crud
 
 create_db_session <- function() {
   db_database_module$SessionLocal()
 }
 
 db_session <- create_db_session()
+
+get_species <- function () {
+      prey_species <- species_roles$species[species_roles$role == "prey"]
+      predator_species <- species_roles$species[species_roles$role == "predator"]
+      list(prey=prey_species, predators=predator_species)
+ }
+
+fetch_daily_analysis_result <- function(session = db_session, date) {
+    daily_analyses = reticulate::py_to_r(daily_analysis_result_crud$select($session)) # todo: How to give this a date
+    # Now need to make it into rows/ the format that the R one has:
+    prey, predators = get_species()
+
+}
 
 detection_to_row <- function(detection) {
   bbox <- reticulate::py_to_r(detection$bbox)
