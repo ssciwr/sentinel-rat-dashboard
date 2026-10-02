@@ -22,6 +22,24 @@ class CameraCRUD(CRUDBase[Camera]):
         super().__init__(Camera)
         self.location_history_crud = location_history_crud
 
+    # Retrieve camera coordinates for dashboard map markers.
+    def select_map_rows(self, session: Session) -> list[dict[str, int | float | str]]:
+        statement = select(
+            Camera.id,
+            Camera.name,
+            func.ST_Y(Camera.location).label("latitude"),
+            func.ST_X(Camera.location).label("longitude"),
+        ).order_by(Camera.id)
+        return [
+            {
+                "id": int(camera_id),
+                "name": name,
+                "latitude": float(latitude),
+                "longitude": float(longitude),
+            }
+            for camera_id, name, latitude, longitude in session.execute(statement)
+        ]
+
     def add(
         self,
         session: Session,
