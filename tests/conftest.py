@@ -308,6 +308,7 @@ def taxonomy_data():
             "class_name": "Mammalia",
             "order": "Rodentia",
             "common_name": "House mouse",
+            "is_predator": False,
         },
         "update": {
             "common_name": "Updated common name",

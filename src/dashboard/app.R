@@ -34,8 +34,10 @@ server <- function(input, output, session) {
     }
 
     # Round confidence values
-    if ("confidence" %in% names(rows)) {
-      rows$confidence <- round(rows$confidence, 2)
+    for (column in c("confidence", "species_confidence")) {
+      if (column %in% names(rows)) {
+        rows[[column]] <- round(rows[[column]], 2)
+      }
     }
 
     rows

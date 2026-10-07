@@ -223,6 +223,9 @@ class Taxonomy(Base):
     genus: Mapped[str] = mapped_column(String(255), nullable=False)
     species: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
     common_name: Mapped[str] = mapped_column(String(255), nullable=True)
+    is_predator: Mapped[bool | None] = mapped_column(
+        Boolean, nullable=True, index=True
+    )  # True: predator, False: prey, NULL: not assessed yet
 
     # species and genus should be unique in combination
     __table_args__ = (

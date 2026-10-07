@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from dashboard.db.crud import CRUDBase
 
 from . import utils
-from .data_model import DetectionCorrection, ObjectDetection
+from .data_model import DetectionCorrection, ObjectDetection, SpeciesClassification
 
 
 class ObjectDetectionCRUD(CRUDBase[ObjectDetection]):
@@ -46,6 +46,18 @@ class ObjectDetectionCRUD(CRUDBase[ObjectDetection]):
         session.refresh(object_detection)
 
         return object_detection
+
+    def top_classification(
+        self, detection: ObjectDetection
+    ) -> SpeciesClassification | None:
+        """Return the most confident species classification of a detection,
+        or None if it was not classified (e.g. not an animal)."""
+
+        return max(
+            detection.species_classifications,
+            key=lambda classification: classification.confidence,
+            default=None,
+        )
 
     def update(self, *args, **kwargs) -> Any:
         """This method is not intended to be used directly.

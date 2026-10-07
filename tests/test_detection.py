@@ -1,6 +1,11 @@
 import pytest
 
-from dashboard.db import detection_correction_crud, detection_crud
+from dashboard.db import (
+    classification_crud,
+    detection_correction_crud,
+    detection_crud,
+    taxonomy_crud,
+)
 
 
 # tests for ObjectDetectionCRUD
@@ -107,3 +112,30 @@ def test_update_detection_correction_update_fields(
         actual_value = getattr(updated_correction, field)
         assert actual_value == value
     assert last_updated_after > last_updated_before
+
+
+def test_top_classification_returns_none_without_classifications(
+    created_object_detection,
+):
+    assert detection_crud.top_classification(created_object_detection()) is None
+
+
+def test_top_classification_returns_most_confident(
+    get_session,
+    created_species_classification,
+    species_classification_data,
+    taxonomy_data,
+):
+    most_confident = created_species_classification()  # confidence 0.92
+    other_taxonomy = taxonomy_crud.add(get_session, **taxonomy_data["create_another"])
+    classification_crud.add(
+        get_session,
+        **{
+            **species_classification_data["create_another"],
+            "taxonomy_id": other_taxonomy.id,
+        },
+    )  # confidence 0.85
+    detection = detection_crud.get(get_session, most_confident.object_detection_id)
+    get_session.refresh(detection)
+
+    assert detection_crud.top_classification(detection) == most_confident
