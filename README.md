@@ -21,6 +21,10 @@ There are 11 tables in the database, which are defined in `src/dashboard/db/data
 
 ![db-model](docs/figures/sentinel-rat-data-model.png)
 
+#### Predator or prey
+
+Whether a detected animal is a predator or prey is a property of its species, stored in `taxonomy.is_predator`: `true` for predators, `false` for prey, and `NULL` while the species has not been assessed (the default for species added by the `sentinel-rat-pipeline`). A detection gets its role through its most confident species classification; the dashboard shows it in the `role` column (`predator`, `prey`, `not assessed`, or empty for detections without a species classification).
+
 ### Folder structure
 
 ```

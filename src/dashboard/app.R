@@ -23,7 +23,7 @@ server <- function(input, output, session) {
     rows <- fetch_detections(db_session)
 
     if (is.null(rows) || nrow(rows) == 0) {
-      return(data.frame(Message = "No analysis results yet."))
+      return(data.frame(Message = "No detection results yet."))
     }
 
     # Convert species lists into comma-separated text
@@ -34,8 +34,10 @@ server <- function(input, output, session) {
     }
 
     # Round confidence values
-    if ("confidence" %in% names(rows)) {
-      rows$confidence <- round(rows$confidence, 2)
+    for (column in c("confidence", "species_confidence")) {
+      if (column %in% names(rows)) {
+        rows[[column]] <- round(rows[[column]], 2)
+      }
     }
 
     rows

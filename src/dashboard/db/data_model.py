@@ -94,7 +94,7 @@ class ImageCapture(Base):
     camera_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("camera.id"), nullable=False, index=True
     )
-    image_path: Mapped[str] = mapped_column(Text, nullable=False)
+    image_path: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     captured_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -223,6 +223,9 @@ class Taxonomy(Base):
     genus: Mapped[str] = mapped_column(String(255), nullable=False)
     species: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
     common_name: Mapped[str] = mapped_column(String(255), nullable=True)
+    is_predator: Mapped[bool | None] = mapped_column(
+        Boolean, nullable=True, index=True
+    )  # True: predator, False: prey, NULL: not assessed yet
 
     # species and genus should be unique in combination
     __table_args__ = (
