@@ -13,7 +13,7 @@ configure_reticulate_python <- function() {
     python_bin <- Sys.which("python")
   }
   if (!nzchar(python_bin)) {
-    stop("Could not find a Python interpreter for reticulate.")
+    stop("Could not find a Python interpreter for reticulate.", call. = FALSE)
   }
 
   reticulate::use_python(python_bin, required = TRUE)
@@ -28,7 +28,7 @@ add_src_to_python_path <- function() {
   }
 
   script_dir <- dirname(normalizePath(source_file, winslash = "/"))
-  project_root <- normalizePath(file.path(script_dir, "../.."), winslash = "/")
+  project_root <- normalizePath(file.path(script_dir, "..", ".."), winslash = "/")
   src_dir <- file.path(project_root, "src")
 
   if (dir.exists(src_dir)) {

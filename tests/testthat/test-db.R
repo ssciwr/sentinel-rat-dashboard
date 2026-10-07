@@ -12,9 +12,13 @@ test_that("predator_label maps is_predator to a role", {
 })
 
 test_that("species_label prefers the common name", {
-  expect_equal(species_label("Rattus", "rattus", "black rat"), "black rat")
-  expect_equal(species_label("Rattus", "rattus", ""), "Rattus rattus")
-  expect_equal(species_label("Rattus", "rattus"), "Rattus rattus")
-  expect_equal(species_label("Rattus", "Rattus rattus"), "Rattus rattus")
-  expect_equal(species_label("Rattus"), "Rattus")
+  genus <- "Rattus"
+  species <- "rattus"
+  binomial <- "Rattus rattus"
+
+  expect_equal(species_label(genus, species, "black rat"), "black rat")
+  expect_equal(species_label(genus, species, ""), binomial)
+  expect_equal(species_label(genus, species), binomial)
+  expect_equal(species_label(genus, binomial), binomial)
+  expect_equal(species_label(genus), genus)
 })

@@ -12,11 +12,11 @@ ENV POSTGRES_USER=sentinel_user
 ENV POSTGRES_PASSWORD=sentinel_pass
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
     libpq-dev \
     python3 \
     python3-pip \
-    curl \
-    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 COPY install.R /tmp/install.R
@@ -28,10 +28,12 @@ COPY src/ /srv/shiny-server/
 # newer than the base image's system Python. Provide a real 3.13 interpreter
 # (via uv) in a fixed-path venv and install the package's runtime deps into it.
 # reticulate (used by the R app) and init_db both run against this interpreter.
-RUN pip3 install --no-cache-dir uv \
+# Versions are pinned and installs are restricted to pre-built wheels
+# (--only-binary=:all:) so no source-distribution setup scripts run at build.
+RUN pip3 install --no-cache-dir --only-binary=:all: uv==0.12.23 \
     && uv venv --python 3.13 /opt/py313 \
-    && uv pip install --python /opt/py313/bin/python --no-cache \
-        "psycopg[binary]>=3.3.4" "sqlalchemy>=2.0.51" "geoalchemy2>=0.20.0"
+    && uv pip install --python /opt/py313/bin/python --no-cache --only-binary=:all: \
+    "psycopg[binary]>=3.3.4" "sqlalchemy>=2.0.51" "geoalchemy2>=0.20.0"
 ENV RETICULATE_PYTHON=/opt/py313/bin/python
 
 EXPOSE 3838
