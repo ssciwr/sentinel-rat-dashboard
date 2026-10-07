@@ -23,7 +23,7 @@ server <- function(input, output, session) {
     rows <- fetch_detections(db_session)
 
     if (is.null(rows) || nrow(rows) == 0) {
-      return(data.frame(Message = "No analysis results yet."))
+      return(data.frame(Message = "No detection results yet."))
     }
 
     # Convert species lists into comma-separated text
