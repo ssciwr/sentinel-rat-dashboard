@@ -1,6 +1,10 @@
 FROM rocker/shiny:4.3.2
 
 ENV DEBIAN_FRONTEND=noninteractive
+# src/ is copied to /srv/shiny-server/, so the `dashboard` package lives there.
+# The package is not pip-installed (pyproject pins requires-python >=3.13, newer
+# than the base image's Python), so put it on the path explicitly.
+ENV PYTHONPATH=/srv/shiny-server
 ENV POSTGRES_DB=sentinel_db
 ENV POSTGRES_HOST=db
 ENV POSTGRES_PORT=5432
@@ -11,6 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     python3 \
     python3-pip \
+    curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 COPY install.R /tmp/install.R
@@ -18,8 +24,18 @@ RUN Rscript /tmp/install.R
 
 COPY src/ /srv/shiny-server/
 
-RUN pip3 install --no-cache-dir "psycopg[binary]"
+# The dashboard ORM package uses Python 3.13-only syntax (PEP 695 generics),
+# newer than the base image's system Python. Provide a real 3.13 interpreter
+# (via uv) in a fixed-path venv and install the package's runtime deps into it.
+# reticulate (used by the R app) and init_db both run against this interpreter.
+RUN pip3 install --no-cache-dir uv \
+    && uv venv --python 3.13 /opt/py313 \
+    && uv pip install --python /opt/py313/bin/python --no-cache \
+        "psycopg[binary]>=3.3.4" "sqlalchemy>=2.0.51" "geoalchemy2>=0.20.0"
+ENV RETICULATE_PYTHON=/opt/py313/bin/python
 
 EXPOSE 3838
 
-CMD ["sh", "-c", "python3 /srv/shiny-server/dashboard/init_db.py && R -e 'shiny::runApp(\"/srv/shiny-server/dashboard\", host=\"0.0.0.0\", port=3838)'"]
+# db-init creates the schema in the compose stack; running init_db here too is
+# idempotent and keeps the image usable standalone. Use the 3.13 interpreter.
+CMD ["sh", "-c", "/opt/py313/bin/python -m dashboard.init_db && R -e 'shiny::runApp(\"/srv/shiny-server/dashboard\", host=\"0.0.0.0\", port=3838)'"]
