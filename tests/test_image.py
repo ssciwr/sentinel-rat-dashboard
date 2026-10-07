@@ -1,4 +1,5 @@
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from dashboard.db import image_crud
 from dashboard.db.data_model import ImageCapture
@@ -17,6 +18,15 @@ def test_add_image_capture_creates_row(
     ) == point_str.format(
         image_data["create"]["location"][0], image_data["create"]["location"][1]
     )
+
+
+def test_add_image_capture_rejects_duplicate_image_path(
+    get_session, created_image, image_data
+):
+    created_image()
+
+    with pytest.raises(IntegrityError):
+        image_crud.add(get_session, **image_data["create"])
 
 
 def test_mark_image_for_deletion(get_session, created_image):

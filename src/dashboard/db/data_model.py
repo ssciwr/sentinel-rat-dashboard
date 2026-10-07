@@ -94,7 +94,7 @@ class ImageCapture(Base):
     camera_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("camera.id"), nullable=False, index=True
     )
-    image_path: Mapped[str] = mapped_column(Text, nullable=False)
+    image_path: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     captured_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
