@@ -33,7 +33,7 @@ COPY src/ /srv/shiny-server/
 RUN pip3 install --no-cache-dir --only-binary=:all: uv==0.12.23 \
     && uv venv --python 3.13 /opt/py313 \
     && uv pip install --python /opt/py313/bin/python --no-cache --only-binary=:all: \
-    "psycopg[binary]>=3.3.4" "sqlalchemy>=2.0.51" "geoalchemy2>=0.20.0"
+    "psycopg[binary]==3.3.4" "sqlalchemy==2.0.51" "geoalchemy2==0.20.0"
 ENV RETICULATE_PYTHON=/opt/py313/bin/python
 
 EXPOSE 3838
