@@ -28,14 +28,21 @@ class ImageCRUD(CRUDBase[ImageCapture]):
         captured_at: datetime | None = None,
         uploaded_at: datetime | None = None,
         tobe_deleted: bool = False,
+        is_moved: bool = False,
     ) -> ImageCapture:
-        """Insert a new image_capture row and return the persisted object."""
+        """Insert a new image_capture row and return the persisted object.
+        Raises ValueError if is_moved is True while tobe_deleted is False.
+        """
+
+        if is_moved and not tobe_deleted:
+            raise ValueError("An image can only be moved if tobe_deleted is True.")
 
         image_capture = ImageCapture(
             camera_id=camera_id,
             image_path=image_path,
             location=utils.normalize_location(location),
             tobe_deleted=tobe_deleted,
+            is_moved=is_moved,
         )
 
         if captured_at is not None:
@@ -55,6 +62,12 @@ class ImageCRUD(CRUDBase[ImageCapture]):
         """Return a list of image_capture rows that are marked for deletion."""
 
         statement = select(ImageCapture).where(ImageCapture.tobe_deleted.is_(True))
+        return list(session.execute(statement).scalars().all())
+
+    def get_moved_images(self, session: Session) -> list[ImageCapture]:
+        """Return a list of image_capture rows moved out of the watch folder."""
+
+        statement = select(ImageCapture).where(ImageCapture.is_moved.is_(True))
         return list(session.execute(statement).scalars().all())
 
     def get_images_in_period(
@@ -79,11 +92,12 @@ class ImageCRUD(CRUDBase[ImageCapture]):
 
     def update(self, *arg, **kwargs):
         """This method is not intended to be used directly.
-        Use mark_image_for_deletion() instead."""
+        Use mark_image_for_deletion() or mark_image_as_moved() instead."""
 
         raise NotImplementedError(
             "Direct update of image_capture rows is not allowed. "
-            "Use mark_image_for_deletion() to mark an image for deletion."
+            "Use mark_image_for_deletion() to mark an image for deletion "
+            "or mark_image_as_moved() to mark an image as moved."
         )
 
     def mark_image_for_deletion(self, session: Session, image_capture_id: int) -> bool:
@@ -96,6 +110,24 @@ class ImageCRUD(CRUDBase[ImageCapture]):
             return False
 
         image_capture.tobe_deleted = True
+        utils.commit(session)
+        session.refresh(image_capture)
+        return True
+
+    def mark_image_as_moved(self, session: Session, image_capture_id: int) -> bool:
+        """Mark an image_capture row as moved out of the watch folder
+        by setting the is_moved flag to True.
+        Returns True if the row was found and updated, False otherwise.
+        Raises ValueError if the image is not marked for deletion.
+        """
+
+        image_capture = session.get(ImageCapture, image_capture_id)
+        if image_capture is None:
+            return False
+        if not image_capture.tobe_deleted:
+            raise ValueError("An image can only be moved if tobe_deleted is True.")
+
+        image_capture.is_moved = True
         utils.commit(session)
         session.refresh(image_capture)
         return True
