@@ -1,6 +1,7 @@
 from geoalchemy2 import Geometry
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     DateTime,
     Enum,
     Float,
@@ -106,7 +107,17 @@ class ImageCapture(Base):
     )  # Fetched from the camera's location at the time of capture, since camera might be moved
     tobe_deleted: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
-    )  # Flag for deletion when storage is full
+    )  # Set to True if the image is used for analysis and can be deleted if storage is limited
+    is_moved: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )  # Set to True once the image has been moved out of the watch folder
+
+    # an image can only be moved once it is marked for deletion
+    __table_args__ = (
+        CheckConstraint(
+            "NOT is_moved OR tobe_deleted", name="ck_image_capture_moved_requires_delete"
+        ),
+    )
 
     # relationship to Camera
     camera = relationship("Camera", back_populates="images", foreign_keys=[camera_id])

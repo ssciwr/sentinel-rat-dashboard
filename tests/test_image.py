@@ -56,6 +56,89 @@ def test_get_images_to_delete_returns_only_images_marked_for_deletion(
     assert images_to_delete[0].tobe_deleted is True
 
 
+def test_add_image_capture_defaults_is_moved_to_false(get_session, created_image):
+    created_image = created_image()
+
+    assert created_image.is_moved is False
+
+
+def test_add_image_capture_with_is_moved(get_session, created_camera, image_data):
+    created_camera()
+    created_image = image_crud.add(
+        get_session,
+        **{**image_data["create"], "tobe_deleted": True, "is_moved": True},
+    )
+
+    assert created_image.is_moved is True
+
+
+def test_add_image_capture_rejects_moved_image_not_marked_for_deletion(
+    get_session, created_camera, image_data
+):
+    created_camera()
+
+    with pytest.raises(ValueError):
+        image_crud.add(get_session, **{**image_data["create"], "is_moved": True})
+
+
+def test_db_rejects_moved_image_not_marked_for_deletion(get_session, created_image):
+    created_image = created_image()
+
+    created_image.is_moved = True
+    with pytest.raises(IntegrityError):
+        get_session.commit()
+    get_session.rollback()
+
+
+def test_mark_image_as_moved(get_session, created_image):
+    created_image = created_image()
+    image_crud.mark_image_for_deletion(get_session, created_image.id)
+
+    assert image_crud.mark_image_as_moved(get_session, created_image.id) is True
+
+    updated_image = image_crud.get(get_session, created_image.id)
+    assert updated_image is not None
+    assert updated_image.is_moved is True
+
+
+def test_mark_image_as_moved_rejects_image_not_marked_for_deletion(
+    get_session, created_image
+):
+    created_image = created_image()
+
+    with pytest.raises(ValueError):
+        image_crud.mark_image_as_moved(get_session, created_image.id)
+
+    unchanged_image = image_crud.get(get_session, created_image.id)
+    assert unchanged_image is not None
+    assert unchanged_image.is_moved is False
+
+
+def test_mark_image_as_moved_returns_false_for_missing_image(get_session):
+    assert image_crud.mark_image_as_moved(get_session, 9999) is False
+
+
+def test_get_moved_images_returns_only_moved_images(
+    get_session, created_multi_images
+):
+    multi_images = created_multi_images()
+    created_image1 = multi_images[0]
+    created_image2 = multi_images[1]
+
+    moved_images = image_crud.get_moved_images(get_session)
+    assert len(moved_images) == 0
+
+    # marked for deletion but not moved yet, so still excluded
+    image_crud.mark_image_for_deletion(get_session, created_image1.id)
+    image_crud.mark_image_for_deletion(get_session, created_image2.id)
+    image_crud.mark_image_as_moved(get_session, created_image1.id)
+
+    moved_images = image_crud.get_moved_images(get_session)
+    assert len(moved_images) == 1
+    assert moved_images[0].id == created_image1.id
+    assert moved_images[0].is_moved is True
+
+
 def test_get_images_in_period_returns_images_within_time_range(
     get_session, created_multi_images
 ):
