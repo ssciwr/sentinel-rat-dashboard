@@ -115,7 +115,8 @@ class ImageCapture(Base):
     # an image can only be moved once it is marked for deletion
     __table_args__ = (
         CheckConstraint(
-            "NOT is_moved OR tobe_deleted", name="ck_image_capture_moved_requires_delete"
+            "NOT is_moved OR tobe_deleted",
+            name="ck_image_capture_moved_requires_delete",
         ),
     )
 

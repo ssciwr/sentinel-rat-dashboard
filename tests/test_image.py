@@ -118,9 +118,7 @@ def test_mark_image_as_moved_returns_false_for_missing_image(get_session):
     assert image_crud.mark_image_as_moved(get_session, 9999) is False
 
 
-def test_get_moved_images_returns_only_moved_images(
-    get_session, created_multi_images
-):
+def test_get_moved_images_returns_only_moved_images(get_session, created_multi_images):
     multi_images = created_multi_images()
     created_image1 = multi_images[0]
     created_image2 = multi_images[1]
