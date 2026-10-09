@@ -1,6 +1,10 @@
 import pytest
 
-from dashboard.db import classification_correction_crud, classification_crud
+from dashboard.db import (
+    classification_correction_crud,
+    classification_crud,
+    taxonomy_crud,
+)
 
 
 # test for SpeciesClassificationCRUD
@@ -146,3 +150,32 @@ def test_update_classification_correction_update_fields(
         assert actual_value == expected_value
 
     assert last_updated_after > last_updated_before
+
+
+def test_update_classification_correction_changes_taxonomy(
+    get_session,
+    created_classification_correction,
+    taxonomy_data,
+):
+    created_correction = created_classification_correction()
+    other_taxonomy = taxonomy_crud.add(get_session, **taxonomy_data["create_another"])
+
+    updated_correction = classification_correction_crud.update(
+        get_session, created_correction.id, corrected_taxonomy_id=other_taxonomy.id
+    )
+
+    assert updated_correction.corrected_taxonomy_id == other_taxonomy.id
+
+
+@pytest.mark.parametrize(
+    "field", ["species_classification_id", "app_user_id", "new_obj_det_id"]
+)
+def test_update_classification_correction_refuses_other_foreign_keys(
+    get_session, created_classification_correction, field
+):
+    created_correction = created_classification_correction()
+
+    with pytest.raises(ValueError, match="Unsupported"):
+        classification_correction_crud.update(
+            get_session, created_correction.id, **{field: 2}
+        )

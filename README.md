@@ -62,10 +62,27 @@ Methods implemented in the CRUD classes are summarized in the following table:
 | TaxonomyCRUD | . | . | . | . | . | . |  |
 | SpeciesClassificationCRUD | ✓ | . | . | . | x | . |  |
 | AppUserCRUD | ✓ | . | . | . | ✓ | . |  |
-| DetectionCorrectionCRUD | ✓ | . | . | . | ✓ | . |  |
-| ClassificationCorrectionCRUD | ✓ | . | . | . | ✓ | . |  |
-| DailyAnalysisResultCRUD | . | . | . | . | . | . |  |
+| DetectionCorrectionCRUD | ✓ | . | . | . | ✓ | ✓ |  |
+| ClassificationCorrectionCRUD | ✓ | . | . | . | ✓ | ✓ |  |
+| DailyAnalysisResultCRUD | . | . | . | . | . | . | `compute_daily_results`,<br> `pending_days`,<br> `recompute_for_image`,<br> `commit_with_recompute` |
 
+`add`, `update` and `delete` of `DetectionCorrectionCRUD` and `ClassificationCorrectionCRUD` also rebuild the daily analysis results of the corrected image, if they were already computed (see below).
+
+### Daily analysis
+
+`daily_analysis_result_crud.compute_daily_results(session, day)` aggregates the images captured on a day into `daily_analysis_result`: one row per camera and taxonomy, with the number of detections (`taxonomy_count`) and their average classification confidence (`avg_confidence`). It is run every night by the scheduler in [sentinel-rat-pipeline](https://github.com/ssciwr/sentinel-rat-pipeline).
+
+* A day runs from midnight to midnight in the timezone `ANALYSIS_TZ` (environment variable, default `Asia/Colombo`).
+* Each detection counts once, for its species:
+    * user corrections override the model results; if an item has several corrections (e.g. from different users), the one with the latest `last_updated` wins
+    * a detection is skipped if it was removed by a user, or if it has no species
+    * detections added by users count as well
+    * without a correction, the most confident classification wins, also across classification models; a species set by a user counts with confidence `1.0`
+    * images with detections of more than one detection model are refused, since their detections can't be matched
+* Only images that were not aggregated yet (`tobe_deleted` is `False`) are used, and they are marked as `tobe_deleted` afterwards. Late images of an already aggregated day are merged into its existing rows.
+* With `recompute=True`, all images of the day are used and its rows are rebuilt. This happens automatically when a user adds, updates or deletes a correction of an aggregated image (only for the camera of that image), in the same transaction as the correction: if the recompute fails, the correction is not saved.
+* A recompute is refused once an image of the day was moved out of the watch folder (`is_moved`), since the results of moved images might already be deleted. Images should therefore be moved out of the watch folder per whole day.
+* Aggregations of the same day wait for each other (PostgreSQL advisory lock), so the nightly run and a user correction never write the same day at the same time.
 
 ## Development
 

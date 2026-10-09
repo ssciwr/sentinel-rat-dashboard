@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from dashboard.db.crud import CRUDBase
 
 from . import utils
+from .analysis_result import daily_analysis_result_crud
 from .data_model import DetectionCorrection, ObjectDetection, SpeciesClassification
 
 
@@ -127,7 +128,8 @@ class DetectionCorrectionCRUD(CRUDBase[DetectionCorrection]):
             detection_correction.last_updated = last_updated
 
         session.add(detection_correction)
-        utils.commit(session)
+        # a correction of an already aggregated image changes its daily results
+        daily_analysis_result_crud.commit_with_recompute(session, image_capture_id)
         session.refresh(detection_correction)
 
         return detection_correction
@@ -164,12 +166,37 @@ class DetectionCorrectionCRUD(CRUDBase[DetectionCorrection]):
                 "Use the add() method to create a new detection correction."
             )
 
+        if not changes:
+            return detection_correction
+
         # update last_updated to current timestamp
         detection_correction.last_updated = func.now()
 
-        return super().update(
-            session, detection_correction_id, allowed_fields=allowed_fields, **changes
+        super().update(
+            session,
+            detection_correction_id,
+            allowed_fields=allowed_fields,
+            commit=False,
+            **changes,
         )
+        daily_analysis_result_crud.commit_with_recompute(
+            session, detection_correction.image_capture_id
+        )
+        session.refresh(detection_correction)
+        return detection_correction
+
+    def delete(self, session: Session, id: int) -> bool:
+        """Delete a detection_correction row and rebuild the daily results of its
+        image if they used it. Return True if deleted."""
+
+        detection_correction = session.get(DetectionCorrection, id)
+        if detection_correction is None:
+            return False
+
+        image_capture_id = detection_correction.image_capture_id
+        session.delete(detection_correction)
+        daily_analysis_result_crud.commit_with_recompute(session, image_capture_id)
+        return True
 
 
 # create instances of ObjectDetectionCRUD and DetectionCorrectionCRUD to be used in other modules

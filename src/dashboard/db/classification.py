@@ -10,8 +10,10 @@ from sqlalchemy.orm import Session
 from dashboard.db.crud import CRUDBase
 
 from . import utils
+from .analysis_result import daily_analysis_result_crud
 from .data_model import (
     ClassificationCorrection,
+    DetectionCorrection,
     SpeciesClassification,
 )
 
@@ -130,7 +132,10 @@ class ClassificationCorrectionCRUD(CRUDBase[ClassificationCorrection]):
             classification_correction.last_updated = last_updated
 
         session.add(classification_correction)
-        utils.commit(session)
+        # a correction of an already aggregated image changes its daily results
+        daily_analysis_result_crud.commit_with_recompute(
+            session, self._image_capture_id(session, classification_correction)
+        )
         session.refresh(classification_correction)
 
         return classification_correction
@@ -155,10 +160,11 @@ class ClassificationCorrectionCRUD(CRUDBase[ClassificationCorrection]):
             if not col.primary_key and not col.foreign_keys
         }
 
+        # the corrected species can change, the corrected item and the user can't
         allowed_fields = non_pk_fk_fields - {
             "new_obj_det_id",
             "last_updated",
-        }
+        } | {"corrected_taxonomy_id"}
 
         unsupported_fields = set(changes.keys()) - allowed_fields
         if unsupported_fields:
@@ -173,10 +179,62 @@ class ClassificationCorrectionCRUD(CRUDBase[ClassificationCorrection]):
                 "Use the add() method to create a new classification correction."
             )
 
+        if not changes:
+            return classification_correction
+
         # update last_updated to current timestamp
         classification_correction.last_updated = func.now()
 
-        return super().update(session, classification_correction_id, **changes)
+        super().update(
+            session,
+            classification_correction_id,
+            allowed_fields=allowed_fields,
+            commit=False,
+            **changes,
+        )
+        daily_analysis_result_crud.commit_with_recompute(
+            session, self._image_capture_id(session, classification_correction)
+        )
+        session.refresh(classification_correction)
+        return classification_correction
+
+    def delete(self, session: Session, id: int) -> bool:
+        """Delete a classification_correction row and rebuild the daily results of
+        its image if they used it. Return True if deleted."""
+
+        classification_correction = session.get(ClassificationCorrection, id)
+        if classification_correction is None:
+            return False
+
+        image_capture_id = self._image_capture_id(session, classification_correction)
+        session.delete(classification_correction)
+        daily_analysis_result_crud.commit_with_recompute(session, image_capture_id)
+        return True
+
+    def _image_capture_id(
+        self, session: Session, classification_correction: ClassificationCorrection
+    ) -> int | None:
+        """Return the id of the image a classification correction belongs to,
+        or None if its classification or added detection doesn't exist."""
+
+        if classification_correction.species_classification_id is not None:
+            classification = session.get(
+                SpeciesClassification,
+                classification_correction.species_classification_id,
+            )
+            if classification is None:
+                return None
+            return classification.object_detection.image_capture_id
+
+        detection_correction = session.scalars(
+            select(DetectionCorrection).where(
+                DetectionCorrection.new_detection_id
+                == classification_correction.new_obj_det_id
+            )
+        ).first()
+        if detection_correction is None:
+            return None
+        return detection_correction.image_capture_id
 
 
 # Create instances of the CRUD classes for use in other parts of the application
