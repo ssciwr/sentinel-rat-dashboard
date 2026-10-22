@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 import pytest
 from sqlalchemy.exc import IntegrityError
 
@@ -85,6 +87,32 @@ def test_db_rejects_moved_image_not_marked_for_deletion(get_session, created_ima
     created_image = created_image()
 
     created_image.is_moved = True
+    with pytest.raises(IntegrityError):
+        get_session.commit()
+    get_session.rollback()
+
+
+def test_add_image_capture_defaults_missing_since_to_none(get_session, created_image):
+    created_image = created_image()
+
+    assert created_image.missing_since is None
+
+
+def test_db_accepts_missing_image_not_marked_for_deletion(get_session, created_image):
+    created_image = created_image()
+
+    created_image.missing_since = datetime(2026, 10, 22, tzinfo=UTC)
+    get_session.commit()
+    get_session.refresh(created_image)
+    assert created_image.missing_since == datetime(2026, 10, 22, tzinfo=UTC)
+
+
+def test_db_rejects_image_both_moved_and_missing(get_session, created_image):
+    created_image = created_image()
+
+    created_image.tobe_deleted = True
+    created_image.is_moved = True
+    created_image.missing_since = datetime(2026, 10, 22, tzinfo=UTC)
     with pytest.raises(IntegrityError):
         get_session.commit()
     get_session.rollback()

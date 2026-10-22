@@ -111,12 +111,20 @@ class ImageCapture(Base):
     is_moved: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )  # Set to True once the image has been moved out of the watch folder
+    missing_since: Mapped[DateTime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )  # Set when the image left the watch folder without being marked tobe_deleted
 
-    # an image can only be moved once it is marked for deletion
     __table_args__ = (
+        # an image can only be moved once it is marked for deletion
         CheckConstraint(
             "NOT is_moved OR tobe_deleted",
             name="ck_image_capture_moved_requires_delete",
+        ),
+        # an image that left the watch folder is either moved or missing
+        CheckConstraint(
+            "NOT is_moved OR missing_since IS NULL",
+            name="ck_image_capture_moved_not_missing",
         ),
     )
 
