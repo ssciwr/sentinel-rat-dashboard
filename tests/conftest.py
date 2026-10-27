@@ -160,7 +160,6 @@ def image_data():
             "camera_id": 1,
             "image_path": "/path/to/image.jpg",
             "location": (7.1234, 50.5678),
-            "tobe_deleted": False,
         },
         "create_another": {
             "camera_id": 1,
@@ -168,10 +167,6 @@ def image_data():
             "location": (7.1234, 50.5678),
             "captured_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
             "uploaded_at": datetime(2024, 1, 1, 12, 5, 0, tzinfo=UTC),
-            "tobe_deleted": False,
-        },
-        "update": {
-            "tobe_deleted": True,
         },
     }
 

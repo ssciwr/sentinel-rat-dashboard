@@ -56,7 +56,7 @@ Methods implemented in the CRUD classes are summarized in the following table:
 | CRUDBase | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | CameraCRUD | ✓ | . | . | . | ✓ | . |  |
 | CameraLocationHistoryCRUD | x | . | . | . | x | x | `add_location_change`,<br> `get_by_camera`,<br> `update_valid_to_most_recent_history`,<br> `delete_old_camera_history` |
-| ImageCRUD | ✓ | . | . | . | x | . | `get_images_to_delete`,<br> `get_images_in_period`,<br> `mark_image_for_deletion` |
+| ImageCRUD | ✓ | . | . | . | x | . | `get_images_to_move`,<br> `get_images_by_file_status`,<br> `get_images_in_period`,<br> `mark_image_as_analyzed`,<br> `mark_image_as_moved`,<br> `mark_image_as_missing`,<br> `mark_image_as_restored` |
 | MLModelCRUD | . | . | . | . | . | . |  |
 | ObjectDetectionCRUD | ✓ | . | . | . | x | . |  |
 | TaxonomyCRUD | . | . | . | . | . | . |  |
