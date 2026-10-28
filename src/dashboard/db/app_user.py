@@ -23,19 +23,19 @@ class AppUserCRUD(CRUDBase[AppUser]):
         session: Session,
         *,
         username: str,
-        password_hash: str,
+        password: str,
         full_name: str | None = None,
         is_active: bool = True,
         created_at: datetime | None = None,
         updated_at: datetime | None = None,
     ) -> AppUser:
         """Insert a new app_user row and return the persisted object.
-        password_hash must already be hashed, never the plain text password.
+        password must already be hashed or encrypted, never plain text.
         """
 
         app_user = AppUser(
             username=username,
-            password_hash=password_hash,
+            password=password,
             full_name=full_name,
             is_active=is_active,
         )
@@ -61,7 +61,7 @@ class AppUserCRUD(CRUDBase[AppUser]):
         if app_user is None:
             return None
 
-        allowed_fields = {"full_name", "password_hash", "is_active"}
+        allowed_fields = {"full_name", "password", "is_active"}
         unexpected_fields = set(changes.keys()) - allowed_fields
         if unexpected_fields:
             raise ValueError(
