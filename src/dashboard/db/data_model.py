@@ -105,18 +105,29 @@ class ImageCapture(Base):
     location: Mapped[Geometry] = mapped_column(
         Geometry(geometry_type="POINT", srid=4326), nullable=False, index=True
     )  # Fetched from the camera's location at the time of capture, since camera might be moved
-    tobe_deleted: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
-    )  # Set to True if the image is used for analysis and can be deleted if storage is limited
-    is_moved: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
-    )  # Set to True once the image has been moved out of the watch folder
+    analyzed_at: Mapped[DateTime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )  # Set when the image is used for daily analysis, NULL means not analyzed yet
+    file_status: Mapped[str] = mapped_column(
+        Enum("in_watch_folder", "moved", "missing", name="image_file_status"),
+        nullable=False,
+        default="in_watch_folder",
+        index=True,
+    )  # moved: moved out of the watch folder by the service, missing: gone otherwise
+    stored_path: Mapped[str | None] = mapped_column(
+        Text, nullable=True, unique=True, default=None
+    )  # Where a moved image is kept on the server, NULL if not moved or not kept
 
-    # an image can only be moved once it is marked for deletion
     __table_args__ = (
+        # an image can only be moved out of the watch folder once it is analyzed
         CheckConstraint(
-            "NOT is_moved OR tobe_deleted",
-            name="ck_image_capture_moved_requires_delete",
+            "file_status <> 'moved' OR analyzed_at IS NOT NULL",
+            name="ck_image_capture_moved_requires_analyzed",
+        ),
+        # only moved images can have a stored path
+        CheckConstraint(
+            "stored_path IS NULL OR file_status = 'moved'",
+            name="ck_image_capture_stored_path_requires_moved",
         ),
     )
 
