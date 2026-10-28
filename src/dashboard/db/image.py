@@ -119,8 +119,16 @@ class ImageCRUD(CRUDBase[ImageCapture]):
         session.refresh(image_capture)
         return True
 
-    def mark_image_as_moved(self, session: Session, image_capture_id: int) -> bool:
+    def mark_image_as_moved(
+        self,
+        session: Session,
+        image_capture_id: int,
+        stored_path: str | None = None,
+    ) -> bool:
         """Mark an image_capture row as moved out of the watch folder.
+        stored_path is where the image is kept on the server after the move,
+        leave it None if the image is not kept (e.g. deleted or archived offline).
+        image_path is kept as is.
         Returns True if the row was found and updated, False otherwise.
         Raises ValueError if the image is not analyzed or not in the watch folder.
         """
@@ -136,6 +144,7 @@ class ImageCRUD(CRUDBase[ImageCapture]):
                 "only images in the watch folder can be moved."
             )
 
+        image_capture.stored_path = stored_path
         self._change_file_status(session, image_capture, "moved")
         return True
 

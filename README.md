@@ -43,6 +43,7 @@ CRUD operations are defined in general in `crud.py` and then specialized for eac
 * `camera.py` covers both `Camera` and `CameraLocationHistory` tables
 * `detection.py` covers both `ObjectDetection` and `DetectionCorrection` tables
 * `classification.py` covers both `SpeciesClassification` and `ClassificationCorrection` tables
+* `image.py`: `image_path` is the original path in the watch folder and never changes. When an image is moved out of the watch folder, `mark_image_as_moved` can record where it is kept on the server in `stored_path`, so the image can still be displayed.
 * `analysis_result.py` contains the CRUD operations for the `DailyAnalysisResult` table. Data in this table can be used to generate reports for other intervals, e.g. weekly, monthly, or yearly.
 
 Methods implemented in the CRUD classes are summarized in the following table:

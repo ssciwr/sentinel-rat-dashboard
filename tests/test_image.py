@@ -36,6 +36,7 @@ def test_add_image_capture_defaults_to_not_analyzed_and_in_watch_folder(
 
     assert created_image.analyzed_at is None
     assert created_image.file_status == "in_watch_folder"
+    assert created_image.stored_path is None
 
 
 def test_mark_image_as_analyzed(get_session, created_image):
@@ -80,6 +81,44 @@ def test_mark_image_as_moved(get_session, created_image):
     updated_image = image_crud.get(get_session, created_image.id)
     assert updated_image is not None
     assert updated_image.file_status == "moved"
+    assert updated_image.stored_path is None
+
+
+def test_mark_image_as_moved_sets_stored_path(get_session, created_image, image_data):
+    created_image = created_image()
+    image_crud.mark_image_as_analyzed(get_session, created_image.id)
+
+    assert (
+        image_crud.mark_image_as_moved(
+            get_session, created_image.id, stored_path="/archive/image.jpg"
+        )
+        is True
+    )
+
+    updated_image = image_crud.get(get_session, created_image.id)
+    assert updated_image is not None
+    assert updated_image.file_status == "moved"
+    assert updated_image.stored_path == "/archive/image.jpg"
+    assert updated_image.image_path == image_data["create"]["image_path"]
+
+
+def test_mark_image_as_moved_rejects_duplicate_stored_path(
+    get_session, created_multi_images
+):
+    multi_images = created_multi_images()
+    created_image1 = multi_images[0]
+    created_image2 = multi_images[1]
+    image_crud.mark_image_as_analyzed(get_session, created_image1.id)
+    image_crud.mark_image_as_analyzed(get_session, created_image2.id)
+    image_crud.mark_image_as_moved(
+        get_session, created_image1.id, stored_path="/archive/image.jpg"
+    )
+
+    with pytest.raises(IntegrityError):
+        image_crud.mark_image_as_moved(
+            get_session, created_image2.id, stored_path="/archive/image.jpg"
+        )
+    get_session.rollback()
 
 
 def test_mark_image_as_moved_rejects_image_not_analyzed(get_session, created_image):
@@ -101,6 +140,15 @@ def test_db_rejects_moved_image_not_analyzed(get_session, created_image):
     created_image = created_image()
 
     created_image.file_status = "moved"
+    with pytest.raises(IntegrityError):
+        get_session.commit()
+    get_session.rollback()
+
+
+def test_db_rejects_stored_path_for_image_not_moved(get_session, created_image):
+    created_image = created_image()
+
+    created_image.stored_path = "/archive/image.jpg"
     with pytest.raises(IntegrityError):
         get_session.commit()
     get_session.rollback()

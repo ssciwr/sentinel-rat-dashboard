@@ -114,12 +114,20 @@ class ImageCapture(Base):
         default="in_watch_folder",
         index=True,
     )  # moved: moved out of the watch folder by the service, missing: gone otherwise
+    stored_path: Mapped[str | None] = mapped_column(
+        Text, nullable=True, unique=True, default=None
+    )  # Where a moved image is kept on the server, NULL if not moved or not kept
 
     __table_args__ = (
         # an image can only be moved out of the watch folder once it is analyzed
         CheckConstraint(
             "file_status <> 'moved' OR analyzed_at IS NOT NULL",
             name="ck_image_capture_moved_requires_analyzed",
+        ),
+        # only moved images can have a stored path
+        CheckConstraint(
+            "stored_path IS NULL OR file_status = 'moved'",
+            name="ck_image_capture_stored_path_requires_moved",
         ),
     )
 
