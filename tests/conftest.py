@@ -388,14 +388,17 @@ def app_user_data():
     return {
         "create": {
             "username": "testuser",
+            "password_hash": "hashed-password",
             "full_name": "Test User",
             "is_active": True,
         },
         "create_another": {
             "username": "testuser2",
+            "password_hash": "another-hashed-password",
         },
         "update": {
             "full_name": "Updated Test User",
+            "password_hash": "updated-hashed-password",
             "is_active": False,
         },
     }
