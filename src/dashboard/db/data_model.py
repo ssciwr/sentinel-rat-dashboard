@@ -1,6 +1,7 @@
 from geoalchemy2 import Geometry
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     DateTime,
     Enum,
     Float,
@@ -94,7 +95,7 @@ class ImageCapture(Base):
     camera_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("camera.id"), nullable=False, index=True
     )
-    image_path: Mapped[str] = mapped_column(Text, nullable=False)
+    image_path: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     captured_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -104,9 +105,31 @@ class ImageCapture(Base):
     location: Mapped[Geometry] = mapped_column(
         Geometry(geometry_type="POINT", srid=4326), nullable=False, index=True
     )  # Fetched from the camera's location at the time of capture, since camera might be moved
-    tobe_deleted: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
-    )  # Flag for deletion when storage is full
+    analyzed_at: Mapped[DateTime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )  # Set when the image is used for daily analysis, NULL means not analyzed yet
+    file_status: Mapped[str] = mapped_column(
+        Enum("in_watch_folder", "moved", "missing", name="image_file_status"),
+        nullable=False,
+        default="in_watch_folder",
+        index=True,
+    )  # moved: moved out of the watch folder by the service, missing: gone otherwise
+    stored_path: Mapped[str | None] = mapped_column(
+        Text, nullable=True, unique=True, default=None
+    )  # Where a moved image is kept on the server, NULL if not moved or not kept
+
+    __table_args__ = (
+        # an image can only be moved out of the watch folder once it is analyzed
+        CheckConstraint(
+            "file_status <> 'moved' OR analyzed_at IS NOT NULL",
+            name="ck_image_capture_moved_requires_analyzed",
+        ),
+        # only moved images can have a stored path
+        CheckConstraint(
+            "stored_path IS NULL OR file_status = 'moved'",
+            name="ck_image_capture_stored_path_requires_moved",
+        ),
+    )
 
     # relationship to Camera
     camera = relationship("Camera", back_populates="images", foreign_keys=[camera_id])
@@ -223,6 +246,9 @@ class Taxonomy(Base):
     genus: Mapped[str] = mapped_column(String(255), nullable=False)
     species: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
     common_name: Mapped[str] = mapped_column(String(255), nullable=True)
+    is_predator: Mapped[bool | None] = mapped_column(
+        Boolean, nullable=True, index=True
+    )  # True: predator, False: prey, NULL: not assessed yet
 
     # species and genus should be unique in combination
     __table_args__ = (
@@ -306,6 +332,8 @@ class AppUser(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     full_name: Mapped[str] = mapped_column(String(255), nullable=True)
+    # hashed or encrypted password, never plain text; handled by the R dashboard
+    password: Mapped[str] = mapped_column(Text, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

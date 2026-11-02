@@ -19,7 +19,7 @@ from dashboard.db import (
     ml_model_crud,
     taxonomy_crud,
 )
-from dashboard.db.data_model import Base
+from dashboard.db.data_model import Base, ImageCapture
 
 # for local docker desktop,
 # environ["DOCKER_HOST"] is "unix:///home/[user]/.docker/desktop/docker.sock"
@@ -160,7 +160,6 @@ def image_data():
             "camera_id": 1,
             "image_path": "/path/to/image.jpg",
             "location": (7.1234, 50.5678),
-            "tobe_deleted": False,
         },
         "create_another": {
             "camera_id": 1,
@@ -168,10 +167,6 @@ def image_data():
             "location": (7.1234, 50.5678),
             "captured_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
             "uploaded_at": datetime(2024, 1, 1, 12, 5, 0, tzinfo=UTC),
-            "tobe_deleted": False,
-        },
-        "update": {
-            "tobe_deleted": True,
         },
     }
 
@@ -179,6 +174,14 @@ def image_data():
 @pytest.fixture
 def created_image(get_session, created_camera, image_data):
     def _create_image():
+        # image_path is unique, so reuse the image if another fixture created it
+        existing = get_session.scalars(
+            select(ImageCapture).where(
+                ImageCapture.image_path == image_data["create"]["image_path"]
+            )
+        ).first()
+        if existing is not None:
+            return existing
         created_camera()  # Ensure a camera exists before creating an image
         return image_crud.add(get_session, **image_data["create"])
 
@@ -300,6 +303,7 @@ def taxonomy_data():
             "class_name": "Mammalia",
             "order": "Rodentia",
             "common_name": "House mouse",
+            "is_predator": False,
         },
         "update": {
             "common_name": "Updated common name",
@@ -384,14 +388,17 @@ def app_user_data():
     return {
         "create": {
             "username": "testuser",
+            "password": "encoded-password",
             "full_name": "Test User",
             "is_active": True,
         },
         "create_another": {
             "username": "testuser2",
+            "password": "another-encoded-password",
         },
         "update": {
             "full_name": "Updated Test User",
+            "password": "updated-encoded-password",
             "is_active": False,
         },
     }

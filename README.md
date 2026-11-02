@@ -21,6 +21,10 @@ There are 11 tables in the database, which are defined in `src/dashboard/db/data
 
 ![db-model](docs/figures/sentinel-rat-data-model.png)
 
+#### Predator or prey
+
+Whether a detected animal is a predator or prey is a property of its species, stored in `taxonomy.is_predator`: `true` for predators, `false` for prey, and `NULL` while the species has not been assessed (the default for species added by the `sentinel-rat-pipeline`). A detection gets its role through its most confident species classification; the dashboard shows it in the `role` column (`predator`, `prey`, `not assessed`, or empty for detections without a species classification).
+
 ### Folder structure
 
 ```
@@ -39,6 +43,7 @@ CRUD operations are defined in general in `crud.py` and then specialized for eac
 * `camera.py` covers both `Camera` and `CameraLocationHistory` tables
 * `detection.py` covers both `ObjectDetection` and `DetectionCorrection` tables
 * `classification.py` covers both `SpeciesClassification` and `ClassificationCorrection` tables
+* `image.py`: `image_path` is the original path in the watch folder and never changes. When an image is moved out of the watch folder, `mark_image_as_moved` can record where it is kept on the server in `stored_path`, so the image can still be displayed.
 * `analysis_result.py` contains the CRUD operations for the `DailyAnalysisResult` table. Data in this table can be used to generate reports for other intervals, e.g. weekly, monthly, or yearly.
 
 Methods implemented in the CRUD classes are summarized in the following table:
@@ -52,7 +57,7 @@ Methods implemented in the CRUD classes are summarized in the following table:
 | CRUDBase | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | CameraCRUD | ✓ | . | . | . | ✓ | . |  |
 | CameraLocationHistoryCRUD | x | . | . | . | x | x | `add_location_change`,<br> `get_by_camera`,<br> `update_valid_to_most_recent_history`,<br> `delete_old_camera_history` |
-| ImageCRUD | ✓ | . | . | . | x | . | `get_images_to_delete`,<br> `get_images_in_period`,<br> `mark_image_for_deletion` |
+| ImageCRUD | ✓ | . | . | . | x | . | `get_images_to_move`,<br> `get_images_by_file_status`,<br> `get_images_in_period`,<br> `mark_image_as_analyzed`,<br> `mark_image_as_moved`,<br> `mark_image_as_missing`,<br> `mark_image_as_restored` |
 | MLModelCRUD | . | . | . | . | . | . |  |
 | ObjectDetectionCRUD | ✓ | . | . | . | x | . |  |
 | TaxonomyCRUD | . | . | . | . | . | . |  |
