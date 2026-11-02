@@ -22,6 +22,36 @@ class CameraCRUD(CRUDBase[Camera]):
         super().__init__(Camera)
         self.location_history_crud = location_history_crud
 
+    def save_coordinates(
+        self,
+        session: Session,
+        *,
+        name: str,
+        latitude: float,
+        longitude: float,
+        camera_id: int | None = None,
+        status: str | None = None,
+    ) -> Camera:
+        name = name.strip()
+        if not name or len(name) > 255:
+            raise ValueError("Camera ID must contain 1 to 255 characters.")
+        if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+            raise ValueError("Camera coordinates are out of range.")
+        duplicate = select(Camera.id).where(Camera.name == name)
+        if camera_id is not None:
+            duplicate = duplicate.where(Camera.id != camera_id)
+        if session.scalar(duplicate) is not None:
+            raise ValueError("Camera ID is already in use.")
+        changes: dict[str, Any] = {"name": name, "location": (longitude, latitude)}
+        if status is not None:
+            changes["status"] = status
+        if camera_id is None:
+            return self.add(session, **changes)
+        camera = self.update(session, camera_id, **changes)
+        if camera is None:
+            raise ValueError("Camera no longer exists.")
+        return camera
+
     # Retrieve camera coordinates for dashboard map markers.
     def select_map_rows(self, session: Session) -> list[dict[str, int | float | str]]:
         statement = select(
@@ -29,6 +59,7 @@ class CameraCRUD(CRUDBase[Camera]):
             Camera.name,
             func.ST_Y(Camera.location).label("latitude"),
             func.ST_X(Camera.location).label("longitude"),
+            Camera.status,
         ).order_by(Camera.id)
         return [
             {
@@ -36,8 +67,11 @@ class CameraCRUD(CRUDBase[Camera]):
                 "name": name,
                 "latitude": float(latitude),
                 "longitude": float(longitude),
+                "status": status,
             }
-            for camera_id, name, latitude, longitude in session.execute(statement)
+            for camera_id, name, latitude, longitude, status in session.execute(
+                statement
+            )
         ]
 
     def add(
