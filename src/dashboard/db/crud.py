@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -9,8 +9,10 @@ from dashboard.db.database import Base
 
 from . import utils
 
+ModelType = TypeVar("ModelType", bound=Base)
 
-class CRUDBase[ModelType]:
+
+class CRUDBase(Generic[ModelType]):
     def __init__(self, model: type[ModelType]):
         """CRUD helper for a specific SQLAlchemy model class."""
 

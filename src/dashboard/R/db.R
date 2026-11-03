@@ -28,8 +28,7 @@ add_src_to_python_path <- function() {
   }
 
   script_dir <- dirname(normalizePath(source_file, winslash = "/"))
-  project_root <- normalizePath(file.path(script_dir, "..", ".."), winslash = "/")
-  src_dir <- file.path(project_root, "src")
+  src_dir <- normalizePath(file.path(script_dir, "..", ".."), winslash = "/")
 
   if (dir.exists(src_dir)) {
     sys <- reticulate::import("sys")
@@ -46,8 +45,10 @@ db_module <- reticulate::import("dashboard.db")
 db_database_module <- reticulate::import("dashboard.db.database")
 
 detection_crud <- db_module$detection_crud
-species_roles <- db_module$species_roles
+camera_crud <- db_module$camera_crud
 daily_analysis_result_crud <- db_module$daily_analysis_result_crud
+taxonomy_crud <- db_module$taxonomy_crud
+app_user_crud <- db_module$app_user_crud
 
 create_db_session <- function() {
   db_database_module$SessionLocal()
@@ -129,3 +130,68 @@ fetch_detections <- function(session = db_session) {
 
   do.call(rbind, lapply(detections, detection_to_row))
 }
+
+# Convert a daily analysis result into one R data-frame row.
+# Tuyen please feel totally free to overwrite this when relevant
+daily_analysis_result_to_row <- function(daily_analysis_result) {
+  data.frame(
+    id = as.integer(daily_analysis_result$id),
+    camera_id = as.integer(daily_analysis_result$camera_id),
+    start_time = reticulate::py_to_r(daily_analysis_result$start_time),
+    end_time = reticulate::py_to_r(daily_analysis_result$end_time),
+    taxonomy_id = as.integer(daily_analysis_result$taxonomy_id),
+    taxonomy_count = as.integer(daily_analysis_result$taxonomy_count),
+    avg_confidence = as.numeric(daily_analysis_result$avg_confidence),
+    stringsAsFactors = FALSE
+  )
+}
+
+# Retrieve daily analysis results newest first through the Python CRUD helper. Can/should be overwritten later by final implementation
+# generic catch all which can hopefully stay as is in R using `daily_analysis_result_to_row` which can be overwritten to the final Python database functions implementation
+fetch_analyses <- function(session = db_session) {
+  analyses <- daily_analysis_result_crud$select(session)
+
+  if (length(analyses) == 0) {
+    return(data.frame())
+  }
+
+  rows <- do.call(rbind, lapply(analyses, daily_analysis_result_to_row))
+  rows[order(rows$start_time, decreasing = TRUE), , drop = FALSE]
+}
+
+fetch_cameras <- function(session = db_session) {
+  cameras <- camera_crud$select_map_rows(session)
+
+  if (length(cameras) == 0) {
+    return(data.frame())
+  }
+
+  do.call(rbind, lapply(cameras, function(camera) {
+    data.frame(
+      camera_id = as.integer(camera$id),
+      camera_name = as.character(camera$name),
+      lat = as.numeric(camera$latitude),
+      lon = as.numeric(camera$longitude),
+      status = as.character(camera$status),
+      stringsAsFactors = FALSE
+    )
+  }))
+}
+
+fetch_camera_settings <- function() {
+  session <- create_db_session()
+  on.exit(session$close())
+  fetch_cameras(session)
+}
+
+# for editing
+save_camera_settings <- function(name, latitude, longitude, camera_id = NULL, status = NULL) {
+  session <- create_db_session()
+  on.exit(session$close())
+  camera <- camera_crud$save_coordinates(
+    session, name = name, latitude = latitude, longitude = longitude,
+    camera_id = camera_id, status = status
+  )
+  as.integer(camera$id)
+}
+
