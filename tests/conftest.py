@@ -114,20 +114,20 @@ def camera_data():
     return {
         "create": {
             "name": "Camera 1",
-            "location": (7.1234, 50.5678),
+            "location": (81.001, 7.001),
             "description": "Main entrance camera",
             "status": "active",
         },
         "create_another": {
             "name": "Camera 2",
-            "location": (7.5678, 50.1234),
+            "location": (81.002, 7.002),
             "description": "Backyard camera",
             "status": "inactive",
             "installation_date": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
         },
         "update": {
             "name": "Camera 1 Updated",
-            "location": (7.2234, 50.6678),
+            "location": (81.003, 7.003),
             "description": "Updated entrance camera",
             "status": "maintenance",
         },

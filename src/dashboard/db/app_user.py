@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from dashboard.db.crud import CRUDBase
@@ -75,6 +75,48 @@ class AppUserCRUD(CRUDBase[AppUser]):
         return super().update(
             session, app_user_id, allowed_fields=allowed_fields, **changes
         )
+
+"""
+Password hashing (from plaintext to an encrypted form) happens in R before this function is called
+This function is used to communicate between the SQL DB and the R app through python
+
+For example set password updates the hashed(encrypted) password in the SQL database based on the 
+existing property for that for the AppUser model.
+"""
+
+
+    def get_login(
+        self, session: Session, username: str
+    ) -> dict[str, str | int | bool | None] | None:
+        statement = select(
+            AppUser.id.label("app_user_id"),
+            AppUser.username.label("user"),
+            func.nullif(AppUser.password, "").label("password"),
+            AppUser.is_active,
+        ).where(AppUser.username == username)
+        row = session.execute(statement).mappings().one_or_none()
+        return dict(row) if row is not None else None
+
+    def set_password(
+        self,
+        session: Session,
+        *,
+        username: str,
+        password: str,
+    ) -> AppUser:
+        if not username.strip() or len(username) > 50:
+            raise ValueError("Username must contain 1 to 50 characters.")
+        user = session.scalar(select(AppUser).where(AppUser.username == username))
+        if user is None:
+            return self.add(
+                session,
+                username=username,
+                password=password,
+            )
+        updated = self.update(session, user.id, password=password)
+        if updated is None:
+            raise ValueError("User no longer exists.")
+        return updated
 
 
 # create an instance of the AppUserCRUD class to be used in other modules
