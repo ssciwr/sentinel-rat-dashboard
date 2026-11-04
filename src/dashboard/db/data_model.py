@@ -181,6 +181,13 @@ class MLModel(Base):
         cascade=OWNED_RELATIONSHIP_CASCADE,
     )
 
+    # relationship to DailyAnalysisResult
+    daily_analysis_results = relationship(
+        "DailyAnalysisResult",
+        back_populates="ml_model",
+        cascade=OWNED_RELATIONSHIP_CASCADE,
+    )
+
 
 class ObjectDetection(Base):
     """ObjectDetection table"""
@@ -570,6 +577,11 @@ class DailyAnalysisResult(Base):
     end_time: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), nullable=False, index=True
     )
+    # detection model whose detections are counted; counts of different detection
+    # models must not be summed, since the same animal is counted once per model
+    det_model_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("ml_model.id"), nullable=False, index=True
+    )
     taxonomy_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("taxonomy.id"), nullable=False, index=True
     )
@@ -582,7 +594,11 @@ class DailyAnalysisResult(Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "camera_id", "start_time", "taxonomy_id", name="uq_daily_analysis"
+            "camera_id",
+            "start_time",
+            "det_model_id",
+            "taxonomy_id",
+            name="uq_daily_analysis",
         ),
     )
 
@@ -594,4 +610,9 @@ class DailyAnalysisResult(Base):
     # relationship to Taxonomy
     taxonomy = relationship(
         "Taxonomy", back_populates="daily_analysis_results", foreign_keys=[taxonomy_id]
+    )
+
+    # relationship to MLModel
+    ml_model = relationship(
+        "MLModel", back_populates="daily_analysis_results", foreign_keys=[det_model_id]
     )

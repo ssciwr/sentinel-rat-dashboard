@@ -553,6 +553,7 @@ def daily_analysis_result_data():
             "camera_id": 1,
             "start_time": datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC),
             "end_time": datetime(2024, 1, 2, 0, 0, 0, tzinfo=UTC),
+            "det_model_id": 1,
             "taxonomy_count": 10,
             "avg_confidence": 0.85,
             "taxonomy_id": 1,
@@ -561,6 +562,7 @@ def daily_analysis_result_data():
             "camera_id": 1,
             "start_time": datetime(2024, 1, 2, 0, 0, 0, tzinfo=UTC),
             "end_time": datetime(2024, 1, 3, 0, 0, 0, tzinfo=UTC),
+            "det_model_id": 1,
             "taxonomy_count": 15,
             "avg_confidence": 0.80,
             "taxonomy_id": 2,
@@ -577,10 +579,12 @@ def created_daily_analysis_result(
     get_session,
     daily_analysis_result_data,
     created_camera,
+    created_ml_model,
     created_multi_taxonomies,
 ):
     def _create_daily_analysis_result():
         created_camera()  # Ensure a camera exists before creating a daily analysis result
+        created_ml_model()  # Ensure a detection model exists before creating a daily analysis result
         created_multi_taxonomies()  # Ensure taxonomies exist before creating a daily analysis result
         return daily_analysis_result_crud.add(
             get_session, **daily_analysis_result_data["create"]

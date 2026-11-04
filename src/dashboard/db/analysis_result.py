@@ -109,26 +109,24 @@ def _added_detection_species(
     return classification_correction.corrected_taxonomy_id, CORRECTED_CONFIDENCE
 
 
-def _image_species(image: ImageCapture) -> list[tuple[int, float]]:
-    """Return (taxonomy_id, confidence) of every detection in an image
-    that has a species after user corrections."""
+def _image_species(image: ImageCapture) -> list[tuple[int, int, float]]:
+    """Return (det_model_id, taxonomy_id, confidence) of every detection in an image
+    that has a species after user corrections.
 
-    # detections of different models can't be matched to each other,
-    # so the same animal would be counted once per model
-    det_model_ids = {detection.det_model_id for detection in image.object_detections}
-    if len(det_model_ids) > 1:
-        raise ValueError(
-            f"Image {image.image_path} has detections of several detection models "
-            f"{sorted(det_model_ids)}, which the daily analysis does not support."
-        )
+    Detections of different detection models can't be matched to each other,
+    so each detection model is counted separately."""
 
-    species = [_detection_species(detection) for detection in image.object_detections]
+    species = [
+        (detection.det_model_id, _detection_species(detection))
+        for detection in image.object_detections
+    ]
+    # an added detection belongs to the detection model it was added for
     species += [
-        _added_detection_species(correction)
+        (correction.det_model_id, _added_detection_species(correction))
         for correction in image.detection_corrections
         if correction.new_detection_id is not None
     ]
-    return [item for item in species if item is not None]
+    return [(det_model_id, *item) for det_model_id, item in species if item is not None]
 
 
 class DailyAnalysisResultCRUD(CRUDBase[DailyAnalysisResult]):
@@ -148,7 +146,7 @@ class DailyAnalysisResultCRUD(CRUDBase[DailyAnalysisResult]):
         commit: bool = True,
     ) -> list[DailyAnalysisResult]:
         """Aggregate the detections of the images captured on a day into
-        daily_analysis_result, one row per camera and taxonomy,
+        daily_analysis_result, one row per camera, detection model and taxonomy,
         and mark the images as analyzed (set analyzed_at).
 
         The day runs from midnight to midnight in tz (defaults to ANALYSIS_TZ).
@@ -227,13 +225,13 @@ class DailyAnalysisResultCRUD(CRUDBase[DailyAnalysisResult]):
                     f"Cannot recompute {day}: the images of its results are gone."
                 )
 
-        # (camera_id, taxonomy_id) -> [count, sum of confidences]
-        totals: defaultdict[tuple[int, int], list[float]] = defaultdict(
+        # (camera_id, det_model_id, taxonomy_id) -> [count, sum of confidences]
+        totals: defaultdict[tuple[int, int, int], list[float]] = defaultdict(
             lambda: [0, 0.0]
         )
         for image in images:
-            for taxonomy_id, confidence in _image_species(image):
-                total = totals[(image.camera_id, taxonomy_id)]
+            for det_model_id, taxonomy_id, confidence in _image_species(image):
+                total = totals[(image.camera_id, det_model_id, taxonomy_id)]
                 total[0] += 1
                 total[1] += confidence
 
@@ -246,15 +244,20 @@ class DailyAnalysisResultCRUD(CRUDBase[DailyAnalysisResult]):
             session.execute(statement)
             existing_rows = []
 
-        rows = {(row.camera_id, row.taxonomy_id): row for row in existing_rows}
-        for (image_camera_id, taxonomy_id), (count, confidence_sum) in totals.items():
-            row = rows.get((image_camera_id, taxonomy_id))
+        rows = {
+            (row.camera_id, row.det_model_id, row.taxonomy_id): row
+            for row in existing_rows
+        }
+        for key, (count, confidence_sum) in totals.items():
+            image_camera_id, det_model_id, taxonomy_id = key
+            row = rows.get(key)
             if row is None:
                 session.add(
                     DailyAnalysisResult(
                         camera_id=image_camera_id,
                         start_time=start,
                         end_time=end,
+                        det_model_id=det_model_id,
                         taxonomy_id=taxonomy_id,
                         taxonomy_count=count,
                         avg_confidence=confidence_sum / count,
@@ -285,7 +288,9 @@ class DailyAnalysisResultCRUD(CRUDBase[DailyAnalysisResult]):
         if camera_id is not None:
             statement = statement.where(DailyAnalysisResult.camera_id == camera_id)
         statement = statement.order_by(
-            DailyAnalysisResult.camera_id, DailyAnalysisResult.taxonomy_id
+            DailyAnalysisResult.camera_id,
+            DailyAnalysisResult.det_model_id,
+            DailyAnalysisResult.taxonomy_id,
         ).execution_options(populate_existing=True)
         return list(session.scalars(statement).all())
 

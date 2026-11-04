@@ -110,10 +110,10 @@ def _classification_correction(session, setup, taxonomy, detection, **kwargs):
 
 
 def _results(session, day=DAY):
-    """{(camera_id, taxonomy_id): (count, avg_confidence)} of a day."""
+    """{(camera_id, det_model_id, taxonomy_id): (count, avg_confidence)} of a day."""
     start, _ = day_bounds(day, TZ)
     return {
-        (row.camera_id, row.taxonomy_id): (
+        (row.camera_id, row.det_model_id, row.taxonomy_id): (
             row.taxonomy_count,
             pytest.approx(row.avg_confidence),
         )
@@ -143,8 +143,8 @@ def test_compute_counts_top_classification_per_camera_and_taxonomy(get_session, 
     rows = _compute(get_session)
 
     assert _results(get_session) == {
-        (setup.camera1.id, setup.rat.id): (2, 0.8),
-        (setup.camera2.id, setup.mouse.id): (1, 0.8),
+        (setup.camera1.id, setup.det_model.id, setup.rat.id): (2, 0.8),
+        (setup.camera2.id, setup.det_model.id, setup.mouse.id): (1, 0.8),
     }
     start, end = day_bounds(DAY, TZ)
     assert all(row.start_time == start and row.end_time == end for row in rows)
@@ -161,7 +161,9 @@ def test_compute_uses_only_images_of_the_local_day(get_session, setup):
 
     _compute(get_session)
 
-    assert _results(get_session) == {(setup.camera1.id, setup.rat.id): (2, 0.5)}
+    assert _results(get_session) == {
+        (setup.camera1.id, setup.det_model.id, setup.rat.id): (2, 0.5)
+    }
     assert len(image_crud.get_images_to_move(get_session)) == 2
 
 
@@ -176,19 +178,36 @@ def test_compute_takes_most_confident_classification_across_models(get_session, 
 
     _compute(get_session)
 
-    assert _results(get_session) == {(setup.camera1.id, setup.mouse.id): (1, 0.7)}
+    assert _results(get_session) == {
+        (setup.camera1.id, setup.det_model.id, setup.mouse.id): (1, 0.7)
+    }
 
 
-def test_compute_refuses_several_detection_models(get_session, setup):
+def test_compute_counts_each_detection_model_separately(get_session, setup):
     image = _image(get_session, setup, _at(10))
+    # both models detected the same rat
     _detection(get_session, setup, image, [(setup.rat, 0.6)])
-    _detection(get_session, setup, image, [(setup.rat, 0.6)], setup.det_model2)
+    _detection(get_session, setup, image, [(setup.rat, 0.8)], setup.det_model2)
+    # a user added a detection the second model missed
+    added = _detection_correction(
+        get_session, setup, image, det_model_id=setup.det_model2.id
+    )
+    classification_correction_crud.add(
+        get_session,
+        species_classification_id=None,
+        new_obj_det_id=added.new_detection_id,
+        app_user_id=setup.user1.id,
+        corrected_taxonomy_id=setup.mouse.id,
+        action="add",
+    )
 
-    with pytest.raises(ValueError, match="several detection models"):
-        _compute(get_session)
+    _compute(get_session)
 
-    assert _results(get_session) == {}
-    assert image_crud.get_images_to_move(get_session) == []
+    assert _results(get_session) == {
+        (setup.camera1.id, setup.det_model.id, setup.rat.id): (1, 0.6),
+        (setup.camera1.id, setup.det_model2.id, setup.rat.id): (1, 0.8),
+        (setup.camera1.id, setup.det_model2.id, setup.mouse.id): (1, 1.0),
+    }
 
 
 def test_compute_merges_late_images_into_existing_rows(get_session, setup):
@@ -204,8 +223,8 @@ def test_compute_merges_late_images_into_existing_rows(get_session, setup):
     _compute(get_session)
 
     assert _results(get_session) == {
-        (setup.camera1.id, setup.rat.id): (2, 0.7),
-        (setup.camera1.id, setup.mouse.id): (1, 0.4),
+        (setup.camera1.id, setup.det_model.id, setup.rat.id): (2, 0.7),
+        (setup.camera1.id, setup.det_model.id, setup.mouse.id): (1, 0.4),
     }
 
 
@@ -239,7 +258,9 @@ def test_compute_applies_latest_detection_correction(get_session, setup):
 
     _compute(get_session)
 
-    assert _results(get_session) == {(setup.camera1.id, setup.rat.id): (1, 0.5)}
+    assert _results(get_session) == {
+        (setup.camera1.id, setup.det_model.id, setup.rat.id): (1, 0.5)
+    }
 
 
 def test_compute_applies_latest_classification_correction(get_session, setup):
@@ -264,7 +285,9 @@ def test_compute_applies_latest_classification_correction(get_session, setup):
     _compute(get_session)
 
     # a species set by a user counts with full confidence
-    assert _results(get_session) == {(setup.camera1.id, setup.mouse.id): (1, 1.0)}
+    assert _results(get_session) == {
+        (setup.camera1.id, setup.det_model.id, setup.mouse.id): (1, 1.0)
+    }
 
 
 def test_compute_counts_detections_added_by_users(get_session, setup):
@@ -282,7 +305,9 @@ def test_compute_counts_detections_added_by_users(get_session, setup):
 
     _compute(get_session)
 
-    assert _results(get_session) == {(setup.camera1.id, setup.rat.id): (1, 1.0)}
+    assert _results(get_session) == {
+        (setup.camera1.id, setup.det_model.id, setup.rat.id): (1, 1.0)
+    }
 
 
 def test_recompute_rebuilds_day_and_drops_stale_rows(get_session, setup):
@@ -299,10 +324,14 @@ def test_recompute_rebuilds_day_and_drops_stale_rows(get_session, setup):
     )
 
     _compute(get_session)
-    assert _results(get_session) == {(setup.camera1.id, setup.rat.id): (1, 0.6)}
+    assert _results(get_session) == {
+        (setup.camera1.id, setup.det_model.id, setup.rat.id): (1, 0.6)
+    }
 
     _compute(get_session, recompute=True)
-    assert _results(get_session) == {(setup.camera1.id, setup.mouse.id): (1, 0.8)}
+    assert _results(get_session) == {
+        (setup.camera1.id, setup.det_model.id, setup.mouse.id): (1, 0.8)
+    }
 
 
 def test_recompute_refused_when_an_image_was_moved(get_session, setup):
@@ -314,7 +343,9 @@ def test_recompute_refused_when_an_image_was_moved(get_session, setup):
     with pytest.raises(ValueError, match="moved"):
         _compute(get_session, recompute=True)
 
-    assert _results(get_session) == {(setup.camera1.id, setup.rat.id): (1, 0.6)}
+    assert _results(get_session) == {
+        (setup.camera1.id, setup.det_model.id, setup.rat.id): (1, 0.6)
+    }
 
 
 def test_recompute_refused_when_images_are_gone(get_session, setup):
@@ -326,7 +357,9 @@ def test_recompute_refused_when_images_are_gone(get_session, setup):
     with pytest.raises(ValueError, match="gone"):
         _compute(get_session, recompute=True)
 
-    assert _results(get_session) == {(setup.camera1.id, setup.rat.id): (1, 0.6)}
+    assert _results(get_session) == {
+        (setup.camera1.id, setup.det_model.id, setup.rat.id): (1, 0.6)
+    }
 
 
 def test_correction_after_aggregation_recomputes_its_camera_and_day(get_session, setup):
@@ -339,21 +372,23 @@ def test_correction_after_aggregation_recomputes_its_camera_and_day(get_session,
     correction = _classification_correction(get_session, setup, setup.mouse, detection)
 
     assert _results(get_session) == {
-        (setup.camera1.id, setup.mouse.id): (1, 1.0),
-        (setup.camera2.id, setup.rat.id): (1, 0.5),
+        (setup.camera1.id, setup.det_model.id, setup.mouse.id): (1, 1.0),
+        (setup.camera2.id, setup.det_model.id, setup.rat.id): (1, 0.5),
     }
 
     classification_correction_crud.update(
         get_session, correction.id, corrected_taxonomy_id=setup.rat.id
     )
 
-    assert _results(get_session)[(setup.camera1.id, setup.rat.id)] == (1, 1.0)
+    assert _results(get_session)[
+        (setup.camera1.id, setup.det_model.id, setup.rat.id)
+    ] == (1, 1.0)
 
     classification_correction_crud.delete(get_session, correction.id)
 
     assert _results(get_session) == {
-        (setup.camera1.id, setup.rat.id): (1, 0.6),
-        (setup.camera2.id, setup.rat.id): (1, 0.5),
+        (setup.camera1.id, setup.det_model.id, setup.rat.id): (1, 0.6),
+        (setup.camera2.id, setup.det_model.id, setup.rat.id): (1, 0.5),
     }
 
     detection_correction = _detection_correction(get_session, setup, image, detection)
@@ -361,11 +396,15 @@ def test_correction_after_aggregation_recomputes_its_camera_and_day(get_session,
         get_session, detection_correction.id, action="remove"
     )
 
-    assert _results(get_session) == {(setup.camera2.id, setup.rat.id): (1, 0.5)}
+    assert _results(get_session) == {
+        (setup.camera2.id, setup.det_model.id, setup.rat.id): (1, 0.5)
+    }
 
     detection_correction_crud.delete(get_session, detection_correction.id)
 
-    assert _results(get_session)[(setup.camera1.id, setup.rat.id)] == (1, 0.6)
+    assert _results(get_session)[
+        (setup.camera1.id, setup.det_model.id, setup.rat.id)
+    ] == (1, 0.6)
 
 
 def test_correction_before_aggregation_does_not_aggregate(get_session, setup):
@@ -389,7 +428,9 @@ def test_correction_is_rolled_back_when_recompute_fails(get_session, setup):
         _classification_correction(get_session, setup, setup.mouse, detection)
 
     assert get_session.scalars(select(ClassificationCorrection)).all() == []
-    assert _results(get_session) == {(setup.camera1.id, setup.rat.id): (1, 0.6)}
+    assert _results(get_session) == {
+        (setup.camera1.id, setup.det_model.id, setup.rat.id): (1, 0.6)
+    }
 
 
 def test_pending_days_lists_days_with_images_not_aggregated(get_session, setup):
@@ -431,4 +472,6 @@ def test_aggregations_of_the_same_day_wait_for_each_other(
 
     assert finished.is_set()
     # the second aggregation saw the image as aggregated and didn't count it again
-    assert _results(get_session) == {(setup.camera1.id, setup.rat.id): (1, 0.6)}
+    assert _results(get_session) == {
+        (setup.camera1.id, setup.det_model.id, setup.rat.id): (1, 0.6)
+    }
