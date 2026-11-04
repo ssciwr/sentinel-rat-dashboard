@@ -2,7 +2,7 @@
 
 import os
 from collections import defaultdict
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import delete, func, select, text
@@ -149,12 +149,12 @@ class DailyAnalysisResultCRUD(CRUDBase[DailyAnalysisResult]):
     ) -> list[DailyAnalysisResult]:
         """Aggregate the detections of the images captured on a day into
         daily_analysis_result, one row per camera and taxonomy,
-        and mark the images as tobe_deleted.
+        and mark the images as analyzed (set analyzed_at).
 
         The day runs from midnight to midnight in tz (defaults to ANALYSIS_TZ).
         User corrections override the model results; per item, the latest one wins.
 
-        By default, only images not aggregated yet (tobe_deleted is False) are used,
+        By default, only images not aggregated yet (analyzed_at is NULL) are used,
         and their counts are merged into the existing rows of the day.
         With recompute=True, all images of the day are used and the rows of the day
         are rebuilt. This is refused if an image was already moved out of the watch
@@ -209,12 +209,14 @@ class DailyAnalysisResultCRUD(CRUDBase[DailyAnalysisResult]):
         if camera_id is not None:
             statement = statement.where(ImageCapture.camera_id == camera_id)
         if not recompute:
-            statement = statement.where(ImageCapture.tobe_deleted.is_(False))
+            statement = statement.where(ImageCapture.analyzed_at.is_(None))
         images = list(session.scalars(statement).all())
 
         existing_rows = self._day_rows(session, start, camera_id)
         if recompute:
-            moved = [image.image_path for image in images if image.is_moved]
+            moved = [
+                image.image_path for image in images if image.file_status == "moved"
+            ]
             if moved:
                 raise ValueError(
                     f"Cannot recompute {day}: {len(moved)} image(s) were already moved "
@@ -266,13 +268,17 @@ class DailyAnalysisResultCRUD(CRUDBase[DailyAnalysisResult]):
                 ) / merged_count
                 row.taxonomy_count = merged_count
 
+        # keep the time an image was first analyzed when it is recomputed
+        analyzed_at = datetime.now(UTC)
         for image in images:
-            image.tobe_deleted = True
+            if image.analyzed_at is None:
+                image.analyzed_at = analyzed_at
         session.flush()
 
     def _day_rows(
         self, session: Session, start: datetime, camera_id: int | None
     ) -> list[DailyAnalysisResult]:
+        """Return the rows of a day and camera_id (if given)."""
         statement = select(DailyAnalysisResult).where(
             DailyAnalysisResult.start_time == start
         )
@@ -295,7 +301,7 @@ class DailyAnalysisResultCRUD(CRUDBase[DailyAnalysisResult]):
         statement = (
             select(local_day)
             .where(
-                ImageCapture.tobe_deleted.is_(False),
+                ImageCapture.analyzed_at.is_(None),
                 ImageCapture.captured_at < start,
             )
             .distinct()
@@ -322,7 +328,7 @@ class DailyAnalysisResultCRUD(CRUDBase[DailyAnalysisResult]):
         # wait for a running aggregation of the day, then check if it used the image
         _lock_day(session, day)
         session.refresh(image)
-        if image.tobe_deleted:
+        if image.analyzed_at is not None:
             self.compute_daily_results(
                 session,
                 day,

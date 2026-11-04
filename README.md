@@ -80,9 +80,9 @@ Methods implemented in the CRUD classes are summarized in the following table:
     * detections added by users count as well
     * without a correction, the most confident classification wins, also across classification models; a species set by a user counts with confidence `1.0`
     * images with detections of more than one detection model are refused, since their detections can't be matched
-* Only images that were not aggregated yet (`tobe_deleted` is `False`) are used, and they are marked as `tobe_deleted` afterwards. Late images of an already aggregated day are merged into its existing rows.
+* Only images that were not aggregated yet (`analyzed_at` is `NULL`) are used, and their `analyzed_at` is set afterwards; a recompute keeps the time an image was first analyzed. Late images of an already aggregated day are merged into its existing rows.
 * With `recompute=True`, all images of the day are used and its rows are rebuilt. This happens automatically when a user adds, updates or deletes a correction of an aggregated image (only for the camera of that image), in the same transaction as the correction: if the recompute fails, the correction is not saved.
-* A recompute is refused once an image of the day was moved out of the watch folder (`is_moved`), since the results of moved images might already be deleted. Images should therefore be moved out of the watch folder per whole day.
+* A recompute is refused once an image of the day was moved out of the watch folder (`file_status` is `moved`), since the results of moved images might already be deleted. Images should therefore be moved out of the watch folder per whole day.
 * Aggregations of the same day wait for each other (PostgreSQL advisory lock), so the nightly run and a user correction never write the same day at the same time.
 
 ## Development

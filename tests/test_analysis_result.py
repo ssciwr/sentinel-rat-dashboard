@@ -47,8 +47,8 @@ def setup(get_session):
         clas_model2=ml_model_crud.add(session, name="other", task="classification"),
         rat=taxonomy_crud.add(session, genus="Rattus", species="rattus"),
         mouse=taxonomy_crud.add(session, genus="Mus", species="musculus"),
-        user1=app_user_crud.add(session, username="user1"),
-        user2=app_user_crud.add(session, username="user2"),
+        user1=app_user_crud.add(session, username="user1", password="encoded-1"),
+        user2=app_user_crud.add(session, username="user2", password="encoded-2"),
     )
 
 
@@ -149,7 +149,7 @@ def test_compute_counts_top_classification_per_camera_and_taxonomy(get_session, 
     start, end = day_bounds(DAY, TZ)
     assert all(row.start_time == start and row.end_time == end for row in rows)
     assert len(rows) == 2
-    assert image_crud.get_images_to_delete(get_session) == [image1, image2]
+    assert image_crud.get_images_to_move(get_session) == [image1, image2]
 
 
 def test_compute_uses_only_images_of_the_local_day(get_session, setup):
@@ -162,7 +162,7 @@ def test_compute_uses_only_images_of_the_local_day(get_session, setup):
     _compute(get_session)
 
     assert _results(get_session) == {(setup.camera1.id, setup.rat.id): (2, 0.5)}
-    assert len(image_crud.get_images_to_delete(get_session)) == 2
+    assert len(image_crud.get_images_to_move(get_session)) == 2
 
 
 def test_compute_takes_most_confident_classification_across_models(get_session, setup):
@@ -188,7 +188,7 @@ def test_compute_refuses_several_detection_models(get_session, setup):
         _compute(get_session)
 
     assert _results(get_session) == {}
-    assert image_crud.get_images_to_delete(get_session) == []
+    assert image_crud.get_images_to_move(get_session) == []
 
 
 def test_compute_merges_late_images_into_existing_rows(get_session, setup):
@@ -375,7 +375,7 @@ def test_correction_before_aggregation_does_not_aggregate(get_session, setup):
     _classification_correction(get_session, setup, setup.mouse, detection)
 
     assert _results(get_session) == {}
-    assert image_crud.get_images_to_delete(get_session) == []
+    assert image_crud.get_images_to_move(get_session) == []
 
 
 def test_correction_is_rolled_back_when_recompute_fails(get_session, setup):
@@ -396,12 +396,8 @@ def test_pending_days_lists_days_with_images_not_aggregated(get_session, setup):
     yesterday = DAY - timedelta(days=1)
     _image(get_session, setup, _at(10, day=yesterday))
     _image(get_session, setup, _at(0, 10))  # 2026-09-30 in UTC
-    _image(
-        get_session,
-        setup,
-        _at(10, day=yesterday - timedelta(days=1)),
-        tobe_deleted=True,
-    )
+    analyzed = _image(get_session, setup, _at(10, day=yesterday - timedelta(days=1)))
+    image_crud.mark_image_as_analyzed(get_session, analyzed.id)
     _image(get_session, setup, _at(10, day=DAY + timedelta(days=1)))
 
     pending = daily_analysis_result_crud.pending_days(
