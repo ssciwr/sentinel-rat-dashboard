@@ -9,6 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 
 from dashboard.db.database import Base, engine
+from dashboard.db.migrations import migrate_auth_schema
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ def init_db() -> None:
         conn.commit()
 
     Base.metadata.create_all(bind=engine)
+    migrate_auth_schema(engine)
 
     logger.info("Database initialized successfully")
 
