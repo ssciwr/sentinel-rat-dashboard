@@ -118,6 +118,7 @@ class ClassificationCorrectionCRUD(CRUDBase[ClassificationCorrection]):
                     "correspond to a newly added detection correction. "
                     "Therefore, new_obj_det_id will be ignored."
                 )
+            classification_correction.new_obj_det_id = None
             classification_correction.new_classification_id = None
         elif species_classification_id is None and action != "add":
             raise ValueError(
@@ -163,6 +164,7 @@ class ClassificationCorrectionCRUD(CRUDBase[ClassificationCorrection]):
         # the corrected species can change, the corrected item and the user can't
         allowed_fields = non_pk_fk_fields - {
             "new_obj_det_id",
+            "new_classification_id",
             "last_updated",
         } | {"corrected_taxonomy_id"}
 

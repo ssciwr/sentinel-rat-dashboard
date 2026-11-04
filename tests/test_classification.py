@@ -126,6 +126,7 @@ def test_add_classification_correction_with_warning(
         add_item = classification_correction_crud.add(get_session, **sample_data)
 
     assert add_item.new_classification_id is None
+    assert add_item.new_obj_det_id is None
 
 
 def test_update_classification_correction_update_fields(
@@ -168,7 +169,13 @@ def test_update_classification_correction_changes_taxonomy(
 
 
 @pytest.mark.parametrize(
-    "field", ["species_classification_id", "app_user_id", "new_obj_det_id"]
+    "field",
+    [
+        "species_classification_id",
+        "app_user_id",
+        "new_obj_det_id",
+        "new_classification_id",
+    ],
 )
 def test_update_classification_correction_refuses_other_foreign_keys(
     get_session, created_classification_correction, field

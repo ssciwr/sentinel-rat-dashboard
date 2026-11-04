@@ -449,6 +449,11 @@ class DetectionCorrection(Base):
             "app_user_id",
             name="uq_detection_correction_new_detection_user",
         ),
+        # a correction is either of a model detection or an added detection
+        CheckConstraint(
+            "(object_detection_id IS NULL) <> (new_detection_id IS NULL)",
+            name="ck_detection_correction_one_target",
+        ),
     )
 
 
@@ -536,6 +541,16 @@ class ClassificationCorrection(Base):
             "new_classification_id",
             "app_user_id",
             name="uq_classification_correction_new_classification_user",
+        ),
+        # a correction is either of a model classification or of an added detection
+        CheckConstraint(
+            "(species_classification_id IS NULL) <> (new_obj_det_id IS NULL)",
+            name="ck_classification_correction_one_target",
+        ),
+        # only a classification of an added detection gets a new_classification_id
+        CheckConstraint(
+            "(new_obj_det_id IS NULL) = (new_classification_id IS NULL)",
+            name="ck_classification_correction_new_id_with_added_detection",
         ),
     )
 
