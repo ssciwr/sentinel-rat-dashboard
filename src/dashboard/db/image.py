@@ -1,6 +1,6 @@
 """CRUD helpers for the image table"""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -27,22 +27,15 @@ class ImageCRUD(CRUDBase[ImageCapture]):
         location: Any,
         captured_at: datetime | None = None,
         uploaded_at: datetime | None = None,
-        tobe_deleted: bool = False,
-        is_moved: bool = False,
     ) -> ImageCapture:
         """Insert a new image_capture row and return the persisted object.
-        Raises ValueError if is_moved is True while tobe_deleted is False.
+        New images are not analyzed yet and are in the watch folder.
         """
-
-        if is_moved and not tobe_deleted:
-            raise ValueError("An image can only be moved if tobe_deleted is True.")
 
         image_capture = ImageCapture(
             camera_id=camera_id,
             image_path=image_path,
             location=utils.normalize_location(location),
-            tobe_deleted=tobe_deleted,
-            is_moved=is_moved,
         )
 
         if captured_at is not None:
@@ -58,16 +51,25 @@ class ImageCRUD(CRUDBase[ImageCapture]):
 
         return image_capture
 
-    def get_images_to_delete(self, session: Session) -> list[ImageCapture]:
-        """Return a list of image_capture rows that are marked for deletion."""
+    def get_images_to_move(self, session: Session) -> list[ImageCapture]:
+        """Return a list of image_capture rows that are analyzed
+        and still in the watch folder, i.e. ready to be moved out.
+        """
 
-        statement = select(ImageCapture).where(ImageCapture.tobe_deleted.is_(True))
+        statement = select(ImageCapture).where(
+            ImageCapture.analyzed_at.is_not(None),
+            ImageCapture.file_status == "in_watch_folder",
+        )
         return list(session.execute(statement).scalars().all())
 
-    def get_moved_images(self, session: Session) -> list[ImageCapture]:
-        """Return a list of image_capture rows moved out of the watch folder."""
+    def get_images_by_file_status(
+        self, session: Session, file_status: str
+    ) -> list[ImageCapture]:
+        """Return a list of image_capture rows with the given file_status
+        (in_watch_folder, moved or missing).
+        """
 
-        statement = select(ImageCapture).where(ImageCapture.is_moved.is_(True))
+        statement = select(ImageCapture).where(ImageCapture.file_status == file_status)
         return list(session.execute(statement).scalars().all())
 
     def get_images_in_period(
@@ -92,16 +94,19 @@ class ImageCRUD(CRUDBase[ImageCapture]):
 
     def update(self, *arg, **kwargs):
         """This method is not intended to be used directly.
-        Use mark_image_for_deletion() or mark_image_as_moved() instead."""
+        Use mark_image_as_analyzed(), mark_image_as_moved(),
+        mark_image_as_missing() or mark_image_as_restored() instead."""
 
         raise NotImplementedError(
             "Direct update of image_capture rows is not allowed. "
-            "Use mark_image_for_deletion() to mark an image for deletion "
-            "or mark_image_as_moved() to mark an image as moved."
+            "Use mark_image_as_analyzed() to mark an image as analyzed, "
+            "mark_image_as_moved() to mark an image as moved out of the watch folder, "
+            "mark_image_as_missing() to mark an image as missing "
+            "or mark_image_as_restored() to mark a missing image as back in the watch folder."
         )
 
-    def mark_image_for_deletion(self, session: Session, image_capture_id: int) -> bool:
-        """Mark an image_capture row for deletion by setting the tobe_deleted flag to True.
+    def mark_image_as_analyzed(self, session: Session, image_capture_id: int) -> bool:
+        """Mark an image_capture row as used for daily analysis by setting analyzed_at.
         Returns True if the row was found and updated, False otherwise.
         """
 
@@ -109,28 +114,86 @@ class ImageCRUD(CRUDBase[ImageCapture]):
         if image_capture is None:
             return False
 
-        image_capture.tobe_deleted = True
+        image_capture.analyzed_at = datetime.now(UTC)
         utils.commit(session)
         session.refresh(image_capture)
         return True
 
-    def mark_image_as_moved(self, session: Session, image_capture_id: int) -> bool:
-        """Mark an image_capture row as moved out of the watch folder
-        by setting the is_moved flag to True.
+    def mark_image_as_moved(
+        self,
+        session: Session,
+        image_capture_id: int,
+        stored_path: str | None = None,
+    ) -> bool:
+        """Mark an image_capture row as moved out of the watch folder.
+        stored_path is where the image is kept on the server after the move,
+        leave it None if the image is not kept (e.g. deleted or archived offline).
+        image_path is kept as is.
         Returns True if the row was found and updated, False otherwise.
-        Raises ValueError if the image is not marked for deletion.
+        Raises ValueError if the image is not analyzed or not in the watch folder.
         """
 
         image_capture = session.get(ImageCapture, image_capture_id)
         if image_capture is None:
             return False
-        if not image_capture.tobe_deleted:
-            raise ValueError("An image can only be moved if tobe_deleted is True.")
+        if image_capture.analyzed_at is None:
+            raise ValueError("An image can only be moved once it is analyzed.")
+        if image_capture.file_status != "in_watch_folder":
+            raise ValueError(
+                f"Image is {image_capture.file_status}, "
+                "only images in the watch folder can be moved."
+            )
 
-        image_capture.is_moved = True
+        image_capture.stored_path = stored_path
+        self._change_file_status(session, image_capture, "moved")
+        return True
+
+    def mark_image_as_missing(self, session: Session, image_capture_id: int) -> bool:
+        """Mark an image_capture row as missing, i.e. gone from the watch folder
+        without being moved by the service. analyzed_at is kept as is.
+        Returns True if the row was found and updated, False otherwise.
+        Raises ValueError if the image is not in the watch folder.
+        """
+
+        image_capture = session.get(ImageCapture, image_capture_id)
+        if image_capture is None:
+            return False
+        if image_capture.file_status != "in_watch_folder":
+            raise ValueError(
+                f"Image is {image_capture.file_status}, "
+                "only images in the watch folder can be marked as missing."
+            )
+
+        self._change_file_status(session, image_capture, "missing")
+        return True
+
+    def mark_image_as_restored(self, session: Session, image_capture_id: int) -> bool:
+        """Mark a missing image_capture row as back in the watch folder,
+        e.g. when the file is copied back manually. analyzed_at is kept as is.
+        Returns True if the row was found and updated, False otherwise.
+        Raises ValueError if the image is not missing.
+        """
+
+        image_capture = session.get(ImageCapture, image_capture_id)
+        if image_capture is None:
+            return False
+        if image_capture.file_status != "missing":
+            raise ValueError(
+                f"Image is {image_capture.file_status}, "
+                "only missing images can be restored."
+            )
+
+        self._change_file_status(session, image_capture, "in_watch_folder")
+        return True
+
+    def _change_file_status(
+        self, session: Session, image_capture: ImageCapture, file_status: str
+    ) -> None:
+        """Set file_status and persist the change."""
+
+        image_capture.file_status = file_status
         utils.commit(session)
         session.refresh(image_capture)
-        return True
 
 
 # Create a single instance of ImageCRUD to be used later

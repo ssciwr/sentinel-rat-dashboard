@@ -9,6 +9,7 @@ def test_add_app_user_creates_row(created_multi_app_users, app_user_data):
     assert created_user.id is not None
     assert created_user.username == app_user_data["create"]["username"]
     assert created_user.full_name == app_user_data["create"]["full_name"]
+    assert created_user.password == app_user_data["create"]["password"]
     assert created_user.is_active == app_user_data["create"]["is_active"]
 
     assert created_another_user.id is not None
@@ -31,5 +32,6 @@ def test_update_app_user_updates_fields(get_session, created_app_user, app_user_
     assert updated_user is not None
     assert updated_user.id == created_user.id
     assert updated_user.full_name == app_user_data["update"]["full_name"]
+    assert updated_user.password == app_user_data["update"]["password"]
     assert updated_user.is_active == app_user_data["update"]["is_active"]
     assert updated_at_after_update > updated_at_before_update
