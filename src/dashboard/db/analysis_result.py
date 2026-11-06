@@ -26,6 +26,13 @@ ANALYSIS_TZ = os.getenv("ANALYSIS_TZ", "Asia/Colombo")
 # confidence of a species set by a user correction
 CORRECTED_CONFIDENCE = 1.0
 
+# environment variables with the global confidence thresholds of all models
+DET_CONF_THRESHOLD_ENV = "DET_CONF_THRESHOLD"
+CLAS_CONF_THRESHOLD_ENV = "CLAS_CONF_THRESHOLD"
+
+# threshold if none is given, keeps all results
+NO_THRESHOLD = 0.0
+
 
 def _zone(tz: str | ZoneInfo | None) -> ZoneInfo:
     if tz is None:
@@ -43,6 +50,43 @@ def day_bounds(
     start = datetime.combine(day, time.min, tzinfo=zone)
     end = datetime.combine(day + timedelta(days=1), time.min, tzinfo=zone)
     return start, end
+
+
+def _checked_threshold(name: str, threshold: float) -> float:
+    if not 0 <= threshold <= 1:
+        raise ValueError(f"{name} must be between 0 and 1, got {threshold!r}")
+    return threshold
+
+
+def _env_threshold(name: str) -> float:
+    """Return the threshold in an environment variable, NO_THRESHOLD if it is not set
+    or empty."""
+
+    value = os.getenv(name, "").strip()
+    if not value:
+        return NO_THRESHOLD
+    try:
+        threshold = float(value)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a number, got {value!r}") from exc
+    return _checked_threshold(name, threshold)
+
+
+def _resolve_thresholds(
+    det_threshold: float | None, clas_threshold: float | None
+) -> tuple[float, float]:
+    """Return the (detection, classification) thresholds to use: the given ones,
+    else the ones in the environment variables, else NO_THRESHOLD.
+    Raises ValueError if a threshold used is not a number between 0 and 1."""
+
+    return (
+        _env_threshold(DET_CONF_THRESHOLD_ENV)
+        if det_threshold is None
+        else _checked_threshold("det_threshold", det_threshold),
+        _env_threshold(CLAS_CONF_THRESHOLD_ENV)
+        if clas_threshold is None
+        else _checked_threshold("clas_threshold", clas_threshold),
+    )
 
 
 def _lock_day(session: Session, day: date) -> None:
@@ -65,9 +109,15 @@ def _latest[Correction: (DetectionCorrection, ClassificationCorrection)](
     return max(corrections, key=lambda c: (c.last_updated, c.id), default=None)
 
 
-def _detection_species(detection: ObjectDetection) -> tuple[int, float] | None:
+def _detection_species(
+    detection: ObjectDetection, det_threshold: float, clas_threshold: float
+) -> tuple[int, float] | None:
     """Return (taxonomy_id, confidence) of a model detection after user corrections,
-    or None if the detection was removed or has no species."""
+    or None if the detection was removed, has no species or is below a threshold.
+
+    Thresholds only filter model results, and a result at a threshold is kept.
+    A species set by a user always counts, and a detection confirmed by a user
+    skips det_threshold, but its classifications still have to meet clas_threshold."""
 
     correction = _latest(detection.detection_corrections)
     if correction is not None and correction.action == "remove":
@@ -83,9 +133,16 @@ def _detection_species(detection: ObjectDetection) -> tuple[int, float] | None:
     if classification_correction is not None:
         return classification_correction.corrected_taxonomy_id, CORRECTED_CONFIDENCE
 
+    if correction is None and detection.confidence < det_threshold:
+        return None
+
     # the most confident classification wins, also across classification models
     top = max(
-        detection.species_classifications,
+        (
+            classification
+            for classification in detection.species_classifications
+            if classification.confidence >= clas_threshold
+        ),
         key=lambda classification: classification.confidence,
         default=None,
     )
@@ -109,15 +166,20 @@ def _added_detection_species(
     return classification_correction.corrected_taxonomy_id, CORRECTED_CONFIDENCE
 
 
-def _image_species(image: ImageCapture) -> list[tuple[int, int, float]]:
+def _image_species(
+    image: ImageCapture, det_threshold: float, clas_threshold: float
+) -> list[tuple[int, int, float]]:
     """Return (det_model_id, taxonomy_id, confidence) of every detection in an image
-    that has a species after user corrections.
+    that has a species after user corrections and confidence thresholds.
 
     Detections of different detection models can't be matched to each other,
     so each detection model is counted separately."""
 
     species = [
-        (detection.det_model_id, _detection_species(detection))
+        (
+            detection.det_model_id,
+            _detection_species(detection, det_threshold, clas_threshold),
+        )
         for detection in image.object_detections
     ]
     # an added detection belongs to the detection model it was added for
@@ -144,6 +206,8 @@ class DailyAnalysisResultCRUD(CRUDBase[DailyAnalysisResult]):
         camera_id: int | None = None,
         recompute: bool = False,
         commit: bool = True,
+        det_threshold: float | None = None,
+        clas_threshold: float | None = None,
     ) -> list[DailyAnalysisResult]:
         """Aggregate the detections of the images captured on a day into
         daily_analysis_result, one row per camera, detection model and taxonomy,
@@ -152,21 +216,32 @@ class DailyAnalysisResultCRUD(CRUDBase[DailyAnalysisResult]):
         The day runs from midnight to midnight in tz (defaults to ANALYSIS_TZ).
         User corrections override the model results; per item, the latest one wins.
 
+        Model results below a confidence threshold are left out, and each row stores
+        the thresholds it was computed with.
+
         By default, only images not aggregated yet (analyzed_at is NULL) are used,
-        and their counts are merged into the existing rows of the day.
+        and their counts are merged into the existing rows of the day. Images of a
+        camera that already has rows of the day use the thresholds of those rows,
+        so that the thresholds stored in a row stay true for all of its counts.
         With recompute=True, all images of the day are used and the rows of the day
-        are rebuilt. This is refused if an image was already moved out of the watch
+        are rebuilt with the thresholds of this call. This is refused if an image was already moved out of the watch
         folder, since the results of moved images might be gone.
 
         With commit=False, the changes are only flushed, so the caller can commit
         them together with other changes (e.g. the correction that caused them).
 
+        det_threshold and clas_threshold default to the environment variables
+        DET_CONF_THRESHOLD and CLAS_CONF_THRESHOLD, and then to 0.0. A threshold that
+        is not a number between 0 and 1 raises ValueError, and nothing is changed.
+
         Returns the rows of the day (of camera_id, if given).
         """
 
+        thresholds = _resolve_thresholds(det_threshold, clas_threshold)
+
         start, end = day_bounds(day, tz)
         try:
-            self._aggregate(session, day, start, end, camera_id, recompute)
+            self._aggregate(session, day, start, end, camera_id, recompute, thresholds)
         except Exception:
             if commit:
                 session.rollback()
@@ -184,6 +259,7 @@ class DailyAnalysisResultCRUD(CRUDBase[DailyAnalysisResult]):
         end: datetime,
         camera_id: int | None,
         recompute: bool,
+        thresholds: tuple[float, float],
     ) -> None:
         _lock_day(session, day)
 
@@ -225,12 +301,25 @@ class DailyAnalysisResultCRUD(CRUDBase[DailyAnalysisResult]):
                     f"Cannot recompute {day}: the images of its results are gone."
                 )
 
+        # camera_id -> (det_threshold, clas_threshold) of its rows of the day,
+        # a recompute replaces them
+        kept_thresholds = (
+            {}
+            if recompute
+            else {
+                row.camera_id: (row.det_threshold, row.clas_threshold)
+                for row in existing_rows
+            }
+        )
+
         # (camera_id, det_model_id, taxonomy_id) -> [count, sum of confidences]
         totals: defaultdict[tuple[int, int, int], list[float]] = defaultdict(
             lambda: [0, 0.0]
         )
         for image in images:
-            for det_model_id, taxonomy_id, confidence in _image_species(image):
+            for det_model_id, taxonomy_id, confidence in _image_species(
+                image, *kept_thresholds.get(image.camera_id, thresholds)
+            ):
                 total = totals[(image.camera_id, det_model_id, taxonomy_id)]
                 total[0] += 1
                 total[1] += confidence
@@ -250,6 +339,9 @@ class DailyAnalysisResultCRUD(CRUDBase[DailyAnalysisResult]):
         }
         for key, (count, confidence_sum) in totals.items():
             image_camera_id, det_model_id, taxonomy_id = key
+            row_det_threshold, row_clas_threshold = kept_thresholds.get(
+                image_camera_id, thresholds
+            )
             row = rows.get(key)
             if row is None:
                 session.add(
@@ -261,9 +353,8 @@ class DailyAnalysisResultCRUD(CRUDBase[DailyAnalysisResult]):
                         taxonomy_id=taxonomy_id,
                         taxonomy_count=count,
                         avg_confidence=confidence_sum / count,
-                        # results are not filtered by confidence yet
-                        det_threshold=0.0,
-                        clas_threshold=0.0,
+                        det_threshold=row_det_threshold,
+                        clas_threshold=row_clas_threshold,
                     )
                 )
             else:

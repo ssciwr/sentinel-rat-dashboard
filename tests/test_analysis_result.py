@@ -21,7 +21,7 @@ from dashboard.db import (
     ml_model_crud,
     taxonomy_crud,
 )
-from dashboard.db.analysis_result import day_bounds
+from dashboard.db.analysis_result import _resolve_thresholds, day_bounds
 from dashboard.db.data_model import ClassificationCorrection
 
 TZ = "Asia/Colombo"
@@ -34,6 +34,13 @@ _image_number = count()
 def _at(hour: int, minute: int = 0, day: date = DAY) -> datetime:
     """Local time in TZ on a day."""
     return datetime.combine(day, time(hour, minute), tzinfo=ZoneInfo(TZ))
+
+
+@pytest.fixture(autouse=True)
+def no_threshold_env(monkeypatch):
+    """Keep thresholds of the developer's environment out of the tests."""
+    monkeypatch.delenv("DET_CONF_THRESHOLD", raising=False)
+    monkeypatch.delenv("CLAS_CONF_THRESHOLD", raising=False)
 
 
 @pytest.fixture
@@ -65,13 +72,15 @@ def _image(session, setup, captured_at, camera=None, **kwargs):
     )
 
 
-def _detection(session, setup, image, classifications=(), det_model=None):
+def _detection(
+    session, setup, image, classifications=(), det_model=None, det_confidence=0.9
+):
     """Add a detection with (taxonomy, confidence[, model]) classifications."""
     detection = detection_crud.add(
         session,
         image_capture_id=image.id,
         det_model_id=(det_model or setup.det_model).id,
-        confidence=0.9,
+        confidence=det_confidence,
         bbox=BBOX,
         detected_class="animal",
     )
@@ -541,3 +550,292 @@ def test_compute_stores_zero_thresholds(get_session, setup):
     rows = _compute(get_session)
 
     assert [(row.det_threshold, row.clas_threshold) for row in rows] == [(0.0, 0.0)]
+
+
+def test_thresholds_default_to_zero():
+    assert _resolve_thresholds(None, None) == (0.0, 0.0)
+
+
+def test_thresholds_default_to_environment(monkeypatch):
+    monkeypatch.setenv("DET_CONF_THRESHOLD", "0.4")
+    monkeypatch.setenv("CLAS_CONF_THRESHOLD", " 0.6 ")
+
+    assert _resolve_thresholds(None, None) == (0.4, 0.6)
+
+
+@pytest.mark.parametrize("env_name", ["DET_CONF_THRESHOLD", "CLAS_CONF_THRESHOLD"])
+def test_each_threshold_uses_its_own_environment_variable(monkeypatch, env_name):
+    monkeypatch.setenv(env_name, "0.4")
+
+    expected = (0.4, 0.0) if env_name == "DET_CONF_THRESHOLD" else (0.0, 0.4)
+    assert _resolve_thresholds(None, None) == expected
+
+
+def test_empty_environment_threshold_is_not_set(monkeypatch):
+    monkeypatch.setenv("DET_CONF_THRESHOLD", "")
+    monkeypatch.setenv("CLAS_CONF_THRESHOLD", "  ")
+
+    assert _resolve_thresholds(None, None) == (0.0, 0.0)
+
+
+def test_given_thresholds_replace_environment(monkeypatch):
+    monkeypatch.setenv("DET_CONF_THRESHOLD", "0.4")
+    monkeypatch.setenv("CLAS_CONF_THRESHOLD", "0.6")
+
+    assert _resolve_thresholds(0.7, 0.0) == (0.7, 0.0)
+
+
+def test_given_threshold_ignores_invalid_environment(monkeypatch):
+    monkeypatch.setenv("DET_CONF_THRESHOLD", "high")
+
+    assert _resolve_thresholds(0.7, None) == (0.7, 0.0)
+
+
+@pytest.mark.parametrize("env_name", ["DET_CONF_THRESHOLD", "CLAS_CONF_THRESHOLD"])
+@pytest.mark.parametrize("value", ["high", "1.5", "-0.1", "nan"])
+def test_invalid_environment_threshold_is_refused(
+    get_session, setup, monkeypatch, env_name, value
+):
+    monkeypatch.setenv(env_name, value)
+    image = _image(get_session, setup, _at(10))
+
+    with pytest.raises(ValueError, match=env_name):
+        _compute(get_session)
+
+    get_session.refresh(image)
+    assert image.analyzed_at is None
+
+
+@pytest.mark.parametrize("parameter", ["det_threshold", "clas_threshold"])
+@pytest.mark.parametrize("value", [-0.1, 1.5, float("nan")])
+def test_invalid_given_threshold_is_refused(get_session, setup, parameter, value):
+    image = _image(get_session, setup, _at(10))
+
+    with pytest.raises(ValueError, match=parameter):
+        _compute(get_session, **{parameter: value})
+
+    get_session.refresh(image)
+    assert image.analyzed_at is None
+
+
+def _row_thresholds(session, day=DAY):
+    """{(camera_id, taxonomy_id): (det_threshold, clas_threshold)} of a day."""
+    start, _ = day_bounds(day, TZ)
+    return {
+        (row.camera_id, row.taxonomy_id): (row.det_threshold, row.clas_threshold)
+        for row in daily_analysis_result_crud.filter(session, start_time=start)
+    }
+
+
+def test_compute_filters_detections_below_threshold(get_session, setup):
+    image = _image(get_session, setup, _at(10))
+    rat = [(setup.rat, 0.9)]
+    _detection(get_session, setup, image, rat, det_confidence=0.49)  # below
+    _detection(get_session, setup, image, rat, det_confidence=0.5)  # at threshold
+    _detection(get_session, setup, image, rat, det_confidence=0.8)  # above
+
+    _compute(get_session, det_threshold=0.5)
+
+    assert _results(get_session) == {
+        (setup.camera1.id, setup.det_model.id, setup.rat.id): (2, 0.9)
+    }
+
+
+def test_compute_filters_classifications_below_threshold(get_session, setup):
+    image = _image(get_session, setup, _at(10))
+    _detection(get_session, setup, image, [(setup.rat, 0.49)])  # below
+    _detection(get_session, setup, image, [(setup.rat, 0.5)])  # at threshold
+    _detection(get_session, setup, image, [(setup.rat, 0.7)])  # above
+
+    _compute(get_session, clas_threshold=0.5)
+
+    assert _results(get_session) == {
+        (setup.camera1.id, setup.det_model.id, setup.rat.id): (2, 0.6)
+    }
+
+
+def test_compute_applies_threshold_to_all_models(get_session, setup):
+    image = _image(get_session, setup, _at(10))
+    _detection(
+        get_session,
+        setup,
+        image,
+        [(setup.rat, 0.4), (setup.mouse, 0.3, setup.clas_model2)],
+    )
+    _detection(
+        get_session,
+        setup,
+        image,
+        [(setup.mouse, 0.8, setup.clas_model2)],
+        det_model=setup.det_model2,
+        det_confidence=0.4,
+    )
+
+    _compute(get_session, det_threshold=0.5, clas_threshold=0.5)
+
+    assert _results(get_session) == {}
+
+
+def test_compute_uses_thresholds_of_the_environment(get_session, setup, monkeypatch):
+    monkeypatch.setenv("DET_CONF_THRESHOLD", "0.5")
+    monkeypatch.setenv("CLAS_CONF_THRESHOLD", "0.6")
+    image = _image(get_session, setup, _at(10))
+    _detection(get_session, setup, image, [(setup.rat, 0.7)], det_confidence=0.4)
+    _detection(get_session, setup, image, [(setup.rat, 0.5)], det_confidence=0.6)
+    _detection(get_session, setup, image, [(setup.mouse, 0.7)], det_confidence=0.6)
+
+    _compute(get_session)
+
+    assert _results(get_session) == {
+        (setup.camera1.id, setup.det_model.id, setup.mouse.id): (1, 0.7)
+    }
+    assert _row_thresholds(get_session) == {
+        (setup.camera1.id, setup.mouse.id): (0.5, 0.6)
+    }
+
+
+def test_compute_marks_image_analyzed_when_all_results_are_filtered(get_session, setup):
+    image = _image(get_session, setup, _at(10))
+    _detection(get_session, setup, image, [(setup.rat, 0.7)])
+
+    assert _compute(get_session, clas_threshold=0.8) == []
+
+    get_session.refresh(image)
+    assert image.analyzed_at is not None
+
+
+def test_thresholds_do_not_filter_user_corrections(get_session, setup):
+    image = _image(get_session, setup, _at(10))
+    # the user set the species of a detection below both thresholds
+    reclassified = _detection(
+        get_session, setup, image, [(setup.rat, 0.1)], det_confidence=0.1
+    )
+    _classification_correction(get_session, setup, setup.mouse, reclassified)
+    # the user confirmed a detection below the threshold, its classification passes
+    confirmed = _detection(
+        get_session, setup, image, [(setup.rat, 0.9)], det_confidence=0.1
+    )
+    _detection_correction(get_session, setup, image, confirmed)
+    # a confirmed detection doesn't lift the threshold of its classification
+    unclassified = _detection(
+        get_session, setup, image, [(setup.rat, 0.1)], det_confidence=0.1
+    )
+    _detection_correction(get_session, setup, image, unclassified)
+    # a detection added by a user has no confidence to filter
+    added = _detection_correction(get_session, setup, image)
+    classification_correction_crud.add(
+        get_session,
+        species_classification_id=None,
+        new_obj_det_id=added.new_detection_id,
+        app_user_id=setup.user1.id,
+        corrected_taxonomy_id=setup.mouse.id,
+        action="add",
+    )
+
+    _compute(get_session, det_threshold=0.8, clas_threshold=0.8)
+
+    assert _results(get_session) == {
+        (setup.camera1.id, setup.det_model.id, setup.mouse.id): (2, 1.0),
+        (setup.camera1.id, setup.det_model.id, setup.rat.id): (1, 0.9),
+    }
+
+
+def test_removed_detection_stays_removed_with_thresholds(get_session, setup):
+    image = _image(get_session, setup, _at(10))
+    removed = _detection(get_session, setup, image, [(setup.rat, 0.9)])
+    _detection_correction(get_session, setup, image, removed, action="remove")
+
+    _compute(get_session, det_threshold=0.5, clas_threshold=0.5)
+
+    assert _results(get_session) == {}
+
+
+def test_late_images_use_thresholds_of_the_rows_of_their_camera(get_session, setup):
+    image = _image(get_session, setup, _at(10))
+    _detection(get_session, setup, image, [(setup.rat, 0.7)])
+    _compute(get_session, clas_threshold=0.5)
+
+    # passes the old threshold, not the new one
+    late = _image(get_session, setup, _at(11))
+    _detection(get_session, setup, late, [(setup.rat, 0.6)])
+    _detection(get_session, setup, late, [(setup.mouse, 0.6)])
+    # below the old threshold
+    _detection(get_session, setup, late, [(setup.mouse, 0.4)])
+    _compute(get_session, clas_threshold=0.9)
+
+    assert _results(get_session) == {
+        (setup.camera1.id, setup.det_model.id, setup.rat.id): (2, 0.65),
+        (setup.camera1.id, setup.det_model.id, setup.mouse.id): (1, 0.6),
+    }
+    assert set(_row_thresholds(get_session).values()) == {(0.0, 0.5)}
+
+
+def test_camera_without_rows_of_the_day_uses_current_thresholds(get_session, setup):
+    image = _image(get_session, setup, _at(10))
+    _detection(get_session, setup, image, [(setup.rat, 0.7)])
+    _compute(get_session, clas_threshold=0.5)
+
+    other_camera = _image(get_session, setup, _at(11), camera=setup.camera2)
+    _detection(get_session, setup, other_camera, [(setup.rat, 0.8)])
+    _compute(get_session, clas_threshold=0.6)
+
+    assert _row_thresholds(get_session) == {
+        (setup.camera1.id, setup.rat.id): (0.0, 0.5),
+        (setup.camera2.id, setup.rat.id): (0.0, 0.6),
+    }
+
+
+def test_recompute_replaces_rows_with_current_thresholds(get_session, setup):
+    image = _image(get_session, setup, _at(10))
+    _detection(get_session, setup, image, [(setup.rat, 0.7)])
+    _detection(get_session, setup, image, [(setup.mouse, 0.4)])
+    _compute(get_session, clas_threshold=0.5)
+    assert set(_results(get_session)) == {
+        (setup.camera1.id, setup.det_model.id, setup.rat.id)
+    }
+
+    _compute(get_session, recompute=True, det_threshold=0.1, clas_threshold=0.2)
+
+    assert _row_thresholds(get_session) == {
+        (setup.camera1.id, setup.rat.id): (0.1, 0.2),
+        (setup.camera1.id, setup.mouse.id): (0.1, 0.2),
+    }
+
+    # a higher threshold removes the rows of the species it filters out
+    _compute(get_session, recompute=True, clas_threshold=0.9)
+    assert _results(get_session) == {}
+
+
+def test_recompute_of_a_camera_leaves_other_cameras(get_session, setup):
+    for camera in (setup.camera1, setup.camera2):
+        image = _image(get_session, setup, _at(10), camera=camera)
+        _detection(get_session, setup, image, [(setup.rat, 0.7)])
+    _compute(get_session, clas_threshold=0.5)
+
+    _compute(
+        get_session, recompute=True, camera_id=setup.camera1.id, clas_threshold=0.6
+    )
+
+    assert _row_thresholds(get_session) == {
+        (setup.camera1.id, setup.rat.id): (0.0, 0.6),
+        (setup.camera2.id, setup.rat.id): (0.0, 0.5),
+    }
+
+
+def test_correction_recompute_uses_thresholds_of_the_environment(
+    get_session, setup, monkeypatch
+):
+    image = _image(get_session, setup, _at(10))
+    removed = _detection(get_session, setup, image, [(setup.rat, 0.9)])
+    _detection(get_session, setup, image, [(setup.rat, 0.8)])
+    _detection(get_session, setup, image, [(setup.mouse, 0.4)])
+    _compute(get_session, clas_threshold=0.5)
+
+    monkeypatch.setenv("CLAS_CONF_THRESHOLD", "0.3")
+    _detection_correction(get_session, setup, image, removed, action="remove")
+
+    assert _results(get_session) == {
+        (setup.camera1.id, setup.det_model.id, setup.rat.id): (1, 0.8),
+        (setup.camera1.id, setup.det_model.id, setup.mouse.id): (1, 0.4),
+    }
+    assert set(_row_thresholds(get_session).values()) == {(0.0, 0.3)}
