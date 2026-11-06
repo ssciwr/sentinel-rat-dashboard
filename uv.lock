@@ -555,6 +555,7 @@ source = { editable = "." }
 dependencies = [
     { name = "geoalchemy2" },
     { name = "sqlalchemy" },
+    { name = "tzdata" },
 ]
 
 [package.optional-dependencies]
@@ -575,6 +576,7 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0.0" },
     { name = "sqlalchemy", specifier = ">=2.0.51" },
     { name = "testcontainers", marker = "extra == 'dev'", specifier = ">=4.15.0" },
+    { name = "tzdata", specifier = ">=2025.2" },
 ]
 provides-extras = ["dev"]
 
