@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from dashboard.db import (
@@ -475,3 +476,68 @@ def test_aggregations_of_the_same_day_wait_for_each_other(
     assert _results(get_session) == {
         (setup.camera1.id, setup.det_model.id, setup.rat.id): (1, 0.6)
     }
+
+
+def _row_values(setup, **kwargs):
+    start, end = day_bounds(DAY, TZ)
+    return {
+        "camera_id": setup.camera1.id,
+        "start_time": start,
+        "end_time": end,
+        "det_model_id": setup.det_model.id,
+        "taxonomy_id": setup.rat.id,
+        "taxonomy_count": 1,
+        "avg_confidence": 0.9,
+        "det_threshold": 0.5,
+        "clas_threshold": 0.5,
+    } | kwargs
+
+
+@pytest.mark.parametrize("column", ["det_threshold", "clas_threshold"])
+def test_thresholds_are_required(get_session, setup, column):
+    values = _row_values(setup)
+    del values[column]
+
+    with pytest.raises(IntegrityError):
+        daily_analysis_result_crud.add(get_session, **values)
+    get_session.rollback()
+
+
+@pytest.mark.parametrize("column", ["det_threshold", "clas_threshold"])
+@pytest.mark.parametrize("value", [-0.1, 1.1])
+def test_thresholds_must_be_between_zero_and_one(get_session, setup, column, value):
+    with pytest.raises(IntegrityError):
+        daily_analysis_result_crud.add(
+            get_session, **_row_values(setup, **{column: value})
+        )
+    get_session.rollback()
+
+
+@pytest.mark.parametrize("column", ["det_threshold", "clas_threshold"])
+@pytest.mark.parametrize("value", [0.0, 1.0])
+def test_thresholds_accept_their_limits(get_session, setup, column, value):
+    row = daily_analysis_result_crud.add(
+        get_session, **_row_values(setup, **{column: value})
+    )
+
+    assert getattr(row, column) == value
+
+
+@pytest.mark.parametrize("column", ["det_threshold", "clas_threshold"])
+def test_thresholds_are_not_part_of_the_unique_key(get_session, setup, column):
+    daily_analysis_result_crud.add(get_session, **_row_values(setup))
+
+    with pytest.raises(IntegrityError):
+        daily_analysis_result_crud.add(
+            get_session, **_row_values(setup, **{column: 0.9})
+        )
+    get_session.rollback()
+
+
+def test_compute_stores_zero_thresholds(get_session, setup):
+    image = _image(get_session, setup, _at(10))
+    _detection(get_session, setup, image, [(setup.rat, 0.9)])
+
+    rows = _compute(get_session)
+
+    assert [(row.det_threshold, row.clas_threshold) for row in rows] == [(0.0, 0.0)]

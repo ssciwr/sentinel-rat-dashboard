@@ -261,6 +261,9 @@ class DailyAnalysisResultCRUD(CRUDBase[DailyAnalysisResult]):
                         taxonomy_id=taxonomy_id,
                         taxonomy_count=count,
                         avg_confidence=confidence_sum / count,
+                        # results are not filtered by confidence yet
+                        det_threshold=0.0,
+                        clas_threshold=0.0,
                     )
                 )
             else:

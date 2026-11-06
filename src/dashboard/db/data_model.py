@@ -591,6 +591,9 @@ class DailyAnalysisResult(Base):
     avg_confidence: Mapped[float] = mapped_column(
         Float, nullable=False
     )  # Average confidence of detections in this period
+    # confidence thresholds this row was computed with, 0.0 keeps all results
+    det_threshold: Mapped[float] = mapped_column(Float, nullable=False)
+    clas_threshold: Mapped[float] = mapped_column(Float, nullable=False)
 
     __table_args__ = (
         UniqueConstraint(
@@ -599,6 +602,14 @@ class DailyAnalysisResult(Base):
             "det_model_id",
             "taxonomy_id",
             name="uq_daily_analysis",
+        ),
+        CheckConstraint(
+            "det_threshold BETWEEN 0 AND 1",
+            name="ck_daily_analysis_det_threshold_range",
+        ),
+        CheckConstraint(
+            "clas_threshold BETWEEN 0 AND 1",
+            name="ck_daily_analysis_clas_threshold_range",
         ),
     )
 
