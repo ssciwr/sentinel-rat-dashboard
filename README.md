@@ -65,25 +65,41 @@ Methods implemented in the CRUD classes are summarized in the following table:
 | AppUserCRUD | ✓ | . | . | . | ✓ | . |  |
 | DetectionCorrectionCRUD | ✓ | . | . | . | ✓ | ✓ |  |
 | ClassificationCorrectionCRUD | ✓ | . | . | . | ✓ | ✓ |  |
-| DailyAnalysisResultCRUD | . | . | . | . | . | . | `compute_daily_results`,<br> `pending_days`,<br> `recompute_for_image`,<br> `commit_with_recompute` |
+| DailyAnalysisResultCRUD | . | . | . | . | . | . | `compute_daily_results`,<br> `pending_days`,<br> `recompute_for_image`,<br> `recompute_all`,<br> `commit_with_recompute` |
 
-`add`, `update` and `delete` of `DetectionCorrectionCRUD` and `ClassificationCorrectionCRUD` also rebuild the daily analysis results of the corrected image, if they were already computed (see below).
+
 
 ### Daily analysis
 
-`daily_analysis_result_crud.compute_daily_results(session, day)` aggregates the images captured on a day into `daily_analysis_result`: one row per camera and taxonomy, with the number of detections (`taxonomy_count`) and their average classification confidence (`avg_confidence`). It is run every night by the scheduler in [sentinel-rat-pipeline](https://github.com/ssciwr/sentinel-rat-pipeline).
+`daily_analysis_result_crud.compute_daily_results(session, day)` aggregates the images captured on a day (midnight to midnight in `ANALYSIS_TZ`, default `Asia/Colombo`) into one row per camera, detection model and taxonomy. It runs every night from the scheduler in [sentinel-rat-pipeline](https://github.com/ssciwr/sentinel-rat-pipeline). Only new images are used (`analyzed_at` is `NULL`), and late images are merged into the existing rows.
 
-* A day runs from midnight to midnight in the timezone `ANALYSIS_TZ` (environment variable, default `Asia/Colombo`).
-* Each detection counts once, for its species:
-    * user corrections override the model results; if an item has several corrections (e.g. from different users), the one with the latest `last_updated` wins
-    * a detection is skipped if it was removed by a user, or if it has no species
-    * detections added by users count as well
-    * without a correction, the most confident classification wins, also across classification models; a species set by a user counts with confidence `1.0`
-    * each detection model is counted separately (one row per camera, detection model and taxonomy), since detections of different models can't be matched; a detection added by a user counts for the detection model it was added for. Counts of different detection models must not be summed, as the same animal is counted once per model
-* Only images that were not aggregated yet (`analyzed_at` is `NULL`) are used, and their `analyzed_at` is set afterwards; a recompute keeps the time an image was first analyzed. Late images of an already aggregated day are merged into its existing rows.
-* With `recompute=True`, all images of the day are used and its rows are rebuilt. This happens automatically when a user adds, updates or deletes a correction of an aggregated image (only for the camera of that image), in the same transaction as the correction: if the recompute fails, the correction is not saved.
-* A recompute is refused once an image of the day was moved out of the watch folder (`file_status` is `moved`), since the results of moved images might already be deleted. Images should therefore be moved out of the watch folder per whole day.
-* Aggregations of the same day wait for each other (PostgreSQL advisory lock), so the nightly run and a user correction never write the same day at the same time.
+**Counting**
+
+* Each detection counts once, for its most confident classification. A detection without a species is skipped.
+* User corrections override model results, and the latest one wins. Removed detections are skipped, and added ones count.
+* `avg_confidence` averages the winning classifications; a species set by a user counts as `1.0`.
+* Counts of different detection models must not be summed, as the same animal is counted once per model.
+
+**Thresholds**
+
+* `DET_CONF_THRESHOLD` and `CLAS_CONF_THRESHOLD` (`0` to `1`, default `0`, which keeps everything) apply to all models. Results below them are left out, and results at them are kept.
+* A species set by a user always counts. A detection confirmed by a user skips the detection threshold, but its classifications must still meet theirs.
+* Each row stores the thresholds it used (`det_threshold`, `clas_threshold`). Late images use the thresholds of their camera's rows.
+
+**Recomputing**
+
+* `recompute=True` rebuilds a day from all its images, including moved ones, with the current thresholds.
+* To apply new thresholds, call `recompute_all(session, before)`. It rebuilds every camera and day before `before`, and returns the `recomputed` and `skipped` ones.
+* A correction of an analyzed image rebuilds its camera and day with the stored thresholds, in the same transaction. If images were deleted, the correction is saved with a warning (see below). If the rebuild fails for any other reason, e.g. an invalid threshold, the correction is not saved either.
+* Aggregations of the same day wait for each other (PostgreSQL advisory lock).
+
+**Deleted images**
+
+Deleting an image also deletes its results, so they can't be counted again. Each row stores the number of analyzed images of its camera and day (`image_count`), and a rebuild with fewer images left raises `DeletedImagesError`, which protects the existing counts. On such a camera and day:
+
+* The rows keep their counts and thresholds, and late images are still merged.
+* `recompute_all` skips it.
+* A correction is saved without updating the rows, and returns a message for the user in `daily_analysis_warning`.
 
 ## Development
 
