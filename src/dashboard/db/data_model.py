@@ -163,17 +163,6 @@ class MLModel(Base):
     description: Mapped[str] = mapped_column(
         Text, nullable=True
     )  # additional information about the model
-    conf_threshold: Mapped[float] = mapped_column(
-        Float, nullable=True
-    )  # confidence threshold applied to the model's predictions
-
-    __table_args__ = (
-        # NULL passes the check, a threshold is optional
-        CheckConstraint(
-            "conf_threshold BETWEEN 0 AND 1",
-            name="ck_ml_model_conf_threshold_range",
-        ),
-    )
 
     # relationships to ObjectDetection and SpeciesClassification
     object_detections = relationship(
