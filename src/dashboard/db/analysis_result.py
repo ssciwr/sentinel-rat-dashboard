@@ -3,6 +3,7 @@
 import os
 from collections import defaultdict
 from datetime import UTC, date, datetime, time, timedelta
+from typing import NamedTuple
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import delete, func, select, text
@@ -32,6 +33,13 @@ CLAS_CONF_THRESHOLD_ENV = "CLAS_CONF_THRESHOLD"
 
 # threshold if none is given, keeps all results
 NO_THRESHOLD = 0.0
+
+
+class RecomputeAllResult(NamedTuple):
+    """The (day, camera_id) pairs that recompute_all rebuilt or left as they were."""
+
+    recomputed: list[tuple[date, int]]
+    skipped: list[tuple[date, int]]
 
 
 def _zone(tz: str | ZoneInfo | None) -> ZoneInfo:
@@ -80,12 +88,16 @@ def _resolve_thresholds(
     Raises ValueError if a threshold used is not a number between 0 and 1."""
 
     return (
-        _env_threshold(DET_CONF_THRESHOLD_ENV)
-        if det_threshold is None
-        else _checked_threshold("det_threshold", det_threshold),
-        _env_threshold(CLAS_CONF_THRESHOLD_ENV)
-        if clas_threshold is None
-        else _checked_threshold("clas_threshold", clas_threshold),
+        (
+            _env_threshold(DET_CONF_THRESHOLD_ENV)
+            if det_threshold is None
+            else _checked_threshold("det_threshold", det_threshold)
+        ),
+        (
+            _env_threshold(CLAS_CONF_THRESHOLD_ENV)
+            if clas_threshold is None
+            else _checked_threshold("clas_threshold", clas_threshold)
+        ),
     )
 
 
@@ -436,6 +448,75 @@ class DailyAnalysisResultCRUD(CRUDBase[DailyAnalysisResult]):
                 recompute=True,
                 commit=False,
             )
+
+    def recompute_all(
+        self,
+        session: Session,
+        before: date,
+        tz: str | ZoneInfo | None = None,
+        *,
+        det_threshold: float | None = None,
+        clas_threshold: float | None = None,
+    ) -> RecomputeAllResult:
+        """Rebuild the results of the days before `before` (in tz, defaults to
+        ANALYSIS_TZ) per camera, e.g. after the thresholds changed. Each camera and day
+        is committed on its own, so a failure keeps the ones rebuilt so far.
+
+        Skipped are a camera and day with an image moved out of the watch folder or with
+        results but no images left. They keep their rows, with the thresholds stored in
+        them. Thresholds default like in compute_daily_results.
+        """
+
+        # the same thresholds for all, and refuse invalid ones before changing anything
+        det_threshold, clas_threshold = _resolve_thresholds(
+            det_threshold, clas_threshold
+        )
+        zone = _zone(tz)
+        start, _ = day_bounds(before, zone)
+
+        local_day = func.date(func.timezone(zone.key, ImageCapture.captured_at))
+        with_images = session.execute(
+            select(
+                local_day,
+                ImageCapture.camera_id,
+                func.bool_or(ImageCapture.file_status == "moved"),
+            )
+            .where(ImageCapture.captured_at < start)
+            .group_by(local_day, ImageCapture.camera_id)
+        ).all()
+        with_results = session.execute(
+            select(
+                func.date(func.timezone(zone.key, DailyAnalysisResult.start_time)),
+                DailyAnalysisResult.camera_id,
+            )
+            .where(DailyAnalysisResult.start_time < start)
+            .distinct()
+        ).all()
+
+        skipped = {(day, camera_id) for day, camera_id, moved in with_images if moved}
+        skipped |= {tuple(pair) for pair in with_results} - {
+            (day, camera_id) for day, camera_id, _ in with_images
+        }  # also skip a day and camera with results but no images left in the watch folder
+        recomputed = []
+        for day, camera_id in sorted(
+            (day, camera_id) for day, camera_id, moved in with_images if not moved
+        ):
+            try:
+                self.compute_daily_results(
+                    session,
+                    day,
+                    zone,
+                    camera_id=camera_id,
+                    recompute=True,
+                    det_threshold=det_threshold,
+                    clas_threshold=clas_threshold,
+                )
+            except ValueError:
+                # an image was moved or deleted in the meantime
+                skipped.add((day, camera_id))
+            else:
+                recomputed.append((day, camera_id))
+        return RecomputeAllResult(recomputed, sorted(skipped))
 
     def commit_with_recompute(
         self, session: Session, image_capture_id: int | None
