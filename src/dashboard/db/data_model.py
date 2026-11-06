@@ -367,6 +367,10 @@ class DetectionCorrection(Base):
 
     __tablename__ = "detection_correction"
 
+    # not a column: set per instance, a message for the user after this correction was
+    # saved, e.g. if the daily analysis couldn't be updated, None if nothing to tell
+    daily_analysis_warning = None
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     object_detection_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("object_detection.id"), nullable=True, index=True
@@ -468,6 +472,10 @@ class ClassificationCorrection(Base):
     """Classification Correction table"""
 
     __tablename__ = "classification_correction"
+
+    # not a column: set per instance, a message for the user after this correction was
+    # saved, e.g. if the daily analysis couldn't be updated, None if nothing to tell
+    daily_analysis_warning = None
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     species_classification_id: Mapped[int | None] = mapped_column(
@@ -594,6 +602,9 @@ class DailyAnalysisResult(Base):
     # confidence thresholds this row was computed with, 0.0 keeps all results
     det_threshold: Mapped[float] = mapped_column(Float, nullable=False)
     clas_threshold: Mapped[float] = mapped_column(Float, nullable=False)
+    # number of analyzed images of the camera and day, including those without results;
+    # fewer images in image_capture means some were deleted, so counts can't be rebuilt
+    image_count: Mapped[int] = mapped_column(Integer, nullable=False)
 
     __table_args__ = (
         UniqueConstraint(

@@ -559,6 +559,7 @@ def daily_analysis_result_data():
             "taxonomy_id": 1,
             "det_threshold": 0.5,
             "clas_threshold": 0.6,
+            "image_count": 20,
         },
         "create_another": {
             "camera_id": 1,
@@ -570,6 +571,7 @@ def daily_analysis_result_data():
             "taxonomy_id": 2,
             "det_threshold": 0.0,
             "clas_threshold": 0.0,
+            "image_count": 30,
         },
         "update": {
             "taxonomy_count": 20,

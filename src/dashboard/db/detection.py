@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from dashboard.db.crud import CRUDBase
 
 from . import utils
-from .analysis_result import daily_analysis_result_crud
+from .analysis_result import CorrectionDeleteResult, daily_analysis_result_crud
 from .data_model import DetectionCorrection, ObjectDetection, SpeciesClassification
 
 
@@ -90,7 +90,8 @@ class DetectionCorrectionCRUD(CRUDBase[DetectionCorrection]):
         last_updated: datetime | None = None,
         action: Literal["add", "update", "remove"] = "update",
     ) -> DetectionCorrection:
-        """Insert a new detection_correction row and return the persisted object."""
+        """Insert a new detection_correction row and return the persisted object.
+        Its daily_analysis_warning tells if the daily analysis couldn't be updated."""
 
         detection_correction = DetectionCorrection(
             object_detection_id=object_detection_id,
@@ -129,7 +130,9 @@ class DetectionCorrectionCRUD(CRUDBase[DetectionCorrection]):
 
         session.add(detection_correction)
         # a correction of an already aggregated image changes its daily results
-        daily_analysis_result_crud.commit_with_recompute(session, image_capture_id)
+        detection_correction.daily_analysis_warning = (
+            daily_analysis_result_crud.commit_with_recompute(session, image_capture_id)
+        )
         session.refresh(detection_correction)
 
         return detection_correction
@@ -137,11 +140,16 @@ class DetectionCorrectionCRUD(CRUDBase[DetectionCorrection]):
     def update(
         self, session: Session, detection_correction_id: int, **changes: Any
     ) -> DetectionCorrection | None:
-        """Update a detection_correction row and return the refreshed object, or None if missing."""
+        """Update a detection_correction row and return the refreshed object, or None if missing.
+        Its daily_analysis_warning tells if the daily analysis couldn't be updated."""
 
         detection_correction = session.get(DetectionCorrection, detection_correction_id)
         if detection_correction is None:
             return None
+
+        # reset daily_analysis_warning to None before updating,
+        # as the update may change the daily results
+        detection_correction.daily_analysis_warning = None
 
         non_pk_fk_fields = {
             col.name
@@ -179,24 +187,31 @@ class DetectionCorrectionCRUD(CRUDBase[DetectionCorrection]):
             commit=False,
             **changes,
         )
-        daily_analysis_result_crud.commit_with_recompute(
-            session, detection_correction.image_capture_id
+        detection_correction.daily_analysis_warning = (
+            daily_analysis_result_crud.commit_with_recompute(
+                session, detection_correction.image_capture_id
+            )
         )
         session.refresh(detection_correction)
         return detection_correction
 
-    def delete(self, session: Session, id: int) -> bool:
+    def delete(self, session: Session, id: int) -> CorrectionDeleteResult:
         """Delete a detection_correction row and rebuild the daily results of its
-        image if they used it. Return True if deleted."""
+        image if they used it. The result is true if deleted, and its
+        daily_analysis_warning tells if the daily analysis couldn't be updated."""
 
         detection_correction = session.get(DetectionCorrection, id)
         if detection_correction is None:
-            return False
+            return CorrectionDeleteResult(deleted=False)
 
         image_capture_id = detection_correction.image_capture_id
         session.delete(detection_correction)
-        daily_analysis_result_crud.commit_with_recompute(session, image_capture_id)
-        return True
+        return CorrectionDeleteResult(
+            deleted=True,
+            daily_analysis_warning=daily_analysis_result_crud.commit_with_recompute(
+                session, image_capture_id
+            ),
+        )
 
 
 # create instances of ObjectDetectionCRUD and DetectionCorrectionCRUD to be used in other modules

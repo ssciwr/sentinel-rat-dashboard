@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from dashboard.db.crud import CRUDBase
 
 from . import utils
-from .analysis_result import daily_analysis_result_crud
+from .analysis_result import CorrectionDeleteResult, daily_analysis_result_crud
 from .data_model import (
     ClassificationCorrection,
     DetectionCorrection,
@@ -80,7 +80,8 @@ class ClassificationCorrectionCRUD(CRUDBase[ClassificationCorrection]):
         last_updated: datetime | None = None,
         action: Literal["add", "update"] = "update",
     ) -> ClassificationCorrection:
-        """Insert a new classification_correction row and return the persisted object."""
+        """Insert a new classification_correction row and return the persisted object.
+        Its daily_analysis_warning tells if the daily analysis couldn't be updated."""
 
         classification_correction = ClassificationCorrection(
             species_classification_id=species_classification_id,
@@ -134,8 +135,10 @@ class ClassificationCorrectionCRUD(CRUDBase[ClassificationCorrection]):
 
         session.add(classification_correction)
         # a correction of an already aggregated image changes its daily results
-        daily_analysis_result_crud.commit_with_recompute(
-            session, self._image_capture_id(session, classification_correction)
+        classification_correction.daily_analysis_warning = (
+            daily_analysis_result_crud.commit_with_recompute(
+                session, self._image_capture_id(session, classification_correction)
+            )
         )
         session.refresh(classification_correction)
 
@@ -147,13 +150,18 @@ class ClassificationCorrectionCRUD(CRUDBase[ClassificationCorrection]):
         classification_correction_id: int,
         **changes: Any,
     ) -> ClassificationCorrection | None:
-        """Update a classification_correction row and return the refreshed object, or None if missing."""
+        """Update a classification_correction row and return the refreshed object, or None if missing.
+        Its daily_analysis_warning tells if the daily analysis couldn't be updated."""
 
         classification_correction = session.get(
             self.model, classification_correction_id
         )
         if classification_correction is None:
             return None
+
+        # reset daily_analysis_warning to None before updating,
+        # as the update may change the daily results
+        classification_correction.daily_analysis_warning = None
 
         non_pk_fk_fields = {
             col.name
@@ -194,24 +202,31 @@ class ClassificationCorrectionCRUD(CRUDBase[ClassificationCorrection]):
             commit=False,
             **changes,
         )
-        daily_analysis_result_crud.commit_with_recompute(
-            session, self._image_capture_id(session, classification_correction)
+        classification_correction.daily_analysis_warning = (
+            daily_analysis_result_crud.commit_with_recompute(
+                session, self._image_capture_id(session, classification_correction)
+            )
         )
         session.refresh(classification_correction)
         return classification_correction
 
-    def delete(self, session: Session, id: int) -> bool:
+    def delete(self, session: Session, id: int) -> CorrectionDeleteResult:
         """Delete a classification_correction row and rebuild the daily results of
-        its image if they used it. Return True if deleted."""
+        its image if they used it. The result is true if deleted, and its
+        daily_analysis_warning tells if the daily analysis couldn't be updated."""
 
         classification_correction = session.get(ClassificationCorrection, id)
         if classification_correction is None:
-            return False
+            return CorrectionDeleteResult(deleted=False)
 
         image_capture_id = self._image_capture_id(session, classification_correction)
         session.delete(classification_correction)
-        daily_analysis_result_crud.commit_with_recompute(session, image_capture_id)
-        return True
+        return CorrectionDeleteResult(
+            deleted=True,
+            daily_analysis_warning=daily_analysis_result_crud.commit_with_recompute(
+                session, image_capture_id
+            ),
+        )
 
     def _image_capture_id(
         self, session: Session, classification_correction: ClassificationCorrection
