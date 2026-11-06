@@ -206,6 +206,7 @@ def ml_model_data():
             "version": "v1.0",
             "task": "detection",
             "description": "First detection model",
+            "conf_threshold": 0.5,
         },
         "create_another": {
             "name": "Model 2",
@@ -216,6 +217,7 @@ def ml_model_data():
             "version": "v1.1",
             "task": "classification",
             "description": "Updated classification model",
+            "conf_threshold": 0.7,
         },
     }
 
