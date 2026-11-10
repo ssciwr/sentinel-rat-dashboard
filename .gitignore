@@ -3,6 +3,7 @@
 .RData
 .Rproj.user
 .Ruserdata
+app_cache/
 
 # Python (init_db.py helper)
 __pycache__/

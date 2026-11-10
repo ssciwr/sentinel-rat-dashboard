@@ -27,3 +27,14 @@ set_auth_user_password <- function(user, password) {
   )
   as.integer(account$id)
 }
+
+# Create an account without changing an existing user's password.
+create_auth_user <- function(user, password) {
+  stopifnot(is.character(user), length(user) == 1, !is.na(user), nzchar(trimws(user)), nchar(user) <= 50,
+    is.character(password), length(password) == 1, !is.na(password), nchar(password) >= 8)
+  session <- create_db_session()
+  on.exit(session$close())
+  if (!is.null(app_user_crud$get_login(session, user))) return(FALSE)
+  app_user_crud$add(session, username = user, password = scrypt::hashPassword(password))
+  TRUE
+}
