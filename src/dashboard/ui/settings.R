@@ -5,7 +5,7 @@ settings_ui <- function() {
       tags$button(
         type = "button", class = "btn btn-outline-light btn-sm dropdown-toggle",
         `data-bs-toggle` = "dropdown", `aria-expanded` = "false",
-        sentinel_icon("gear"), " Settings"
+        icon("gear"), " Settings"
       ),
       uiOutput("settings_menu", container = tags$ul, class = "dropdown-menu dropdown-menu-end")
     ),
