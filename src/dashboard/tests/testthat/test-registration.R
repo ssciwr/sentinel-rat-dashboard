@@ -46,16 +46,15 @@ test_that("registration stores a password hash that verifies the submitted passw
 })
 
 test_that("short passwords or empty passwords both fail", {
-store <- make_registration_store()
-    user <- strrep("u", 50)
-    created <- store$create(user, "")
-    expect_false(created)
-    created <- store$create(user, "shortpw") # 7 chars, under the 8 minimum
-    expect_false(created)
+  store <- make_registration_store()
+  user <- strrep("u", 50)
+  expect_error(store$create(user, ""))
+  expect_error(store$create(user, "shortpw")) # 7 chars, under the 8 minimum
+  expect_identical(store$rows, users)
 })
 
 test_that("passwords of eight characters or longer are accepted", {
-  for (password in (8, 12)) {
+  for (password in c("samplepw", "samplepass12")) {
     store <- make_registration_store()
     user <- strrep("u", 50)
     created <- store$create(user, password)
@@ -92,7 +91,7 @@ test_that("the settings menu opens registration directly and Login resets the fo
 
 test_that("Empty usernames are disallowed", {
   store <- make_registration_store()
-  for (user in c(" ", "") testServer(store$server, {
+  for (user in c(" ", "")) testServer(store$server, {
     session$setInputs(settings_register_open = 1)
     session$setInputs(settings_register_user = user, settings_register_password = "sample-password", settings_register_password_confirm = "sample-password", settings_create_account = 1)
     expect_true(registration())
@@ -123,6 +122,4 @@ test_that("User must submit matching passwords during registration", {
     expect_identical(store$rows, users)
     expect_identical(registration_notice$text, "Passwords do not match.")
   })
-})
-
 })
