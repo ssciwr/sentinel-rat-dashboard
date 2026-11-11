@@ -548,9 +548,7 @@ class DailyAnalysisResultCRUD(CRUDBase[DailyAnalysisResult]):
         )
         if camera_id is not None:
             statement = statement.where(ImageCapture.camera_id == camera_id)
-        return {
-            row_camera_id: count for row_camera_id, count in session.execute(statement)
-        }
+        return dict(session.execute(statement).all())
 
     def _day_rows(
         self, session: Session, start: datetime, camera_id: int | None

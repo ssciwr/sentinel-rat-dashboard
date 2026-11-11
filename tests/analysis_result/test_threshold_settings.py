@@ -48,10 +48,10 @@ def test_thresholds_and_image_count_are_required(get_session, setup, column):
 @pytest.mark.parametrize("column", ["det_threshold", "clas_threshold"])
 @pytest.mark.parametrize("value", [-0.1, 1.1])
 def test_thresholds_must_be_between_zero_and_one(get_session, setup, column, value):
+    values = _row_values(setup, **{column: value})
+
     with pytest.raises(IntegrityError):
-        daily_analysis_result_crud.add(
-            get_session, **_row_values(setup, **{column: value})
-        )
+        daily_analysis_result_crud.add(get_session, **values)
     get_session.rollback()
 
 
@@ -68,11 +68,10 @@ def test_thresholds_accept_their_limits(get_session, setup, column, value):
 @pytest.mark.parametrize("column", ["det_threshold", "clas_threshold"])
 def test_thresholds_are_not_part_of_the_unique_key(get_session, setup, column):
     daily_analysis_result_crud.add(get_session, **_row_values(setup))
+    duplicate = _row_values(setup, **{column: 0.9})
 
     with pytest.raises(IntegrityError):
-        daily_analysis_result_crud.add(
-            get_session, **_row_values(setup, **{column: 0.9})
-        )
+        daily_analysis_result_crud.add(get_session, **duplicate)
     get_session.rollback()
 
 
