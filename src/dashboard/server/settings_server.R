@@ -5,6 +5,15 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
   can_manage_cameras <- auth$can_manage_cameras
   cameras <- reactiveVal(data.frame())
 
+  output$settings_button <- renderUI({
+    if (isTRUE(credentials$result)) return(tagList(icon("gear"), " Settings"))
+    tagList(icon("right-to-bracket"), " Sign in/up")
+  })
+
+  output$settings_title <- renderText({
+    if (can_manage_cameras()) "Add/Edit Camera" else "Settings"
+  })
+
   output$settings_auth <- renderUI({
     req(!isTRUE(credentials$result))
     if (auth$registration()) return(settings_registration_ui())
@@ -82,10 +91,15 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
     tryCatch({
       camera_id <- NULL
       if (nzchar(input$camera_selection)) camera_id <- as.integer(input$camera_selection)
-      saved_id <- save_camera_settings(name, coordinates[1], coordinates[2], camera_id, status = status)
+      save_camera_settings(name, coordinates[1], coordinates[2], camera_id, status = status)
       showNotification("Camera saved.", type = "message")
       refresh_cameras()
-      updateSelectInput(session, "camera_selection", selected = as.character(saved_id))
+      updateSelectInput(session, "camera_selection", selected = "")
+      updateTextInput(session, "camera_name", value = "")
+      updateNumericInput(session, "camera_latitude", value = NA)
+      updateNumericInput(session, "camera_longitude", value = NA)
+      updateSelectInput(session, "camera_status", selected = "active")
+      session$sendCustomMessage("camera_saved", "camera-settings")
     }, error = function(error) {
       message("Camera settings could not be saved.")
       showNotification("Camera could not be saved. Check that its ID is unique and try again.", type = "error")

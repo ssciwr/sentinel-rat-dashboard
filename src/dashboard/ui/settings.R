@@ -3,9 +3,9 @@ settings_ui <- function() {
   bslib::nav_item(
     div(class = "dropdown",
       tags$button(
-        type = "button", class = "btn btn-outline-light btn-sm dropdown-toggle",
+        type = "button", class = "btn btn-outline-secondary btn-sm dropdown-toggle",
         `data-bs-toggle` = "dropdown", `aria-expanded` = "false",
-        icon("gear"), " Settings"
+        uiOutput("settings_button", inline = TRUE)
       ),
       uiOutput("settings_menu", container = tags$ul, class = "dropdown-menu dropdown-menu-end")
     ),
@@ -13,7 +13,7 @@ settings_ui <- function() {
       role = "dialog", `aria-labelledby` = "camera-settings-title",
       div(class = "modal-dialog", div(class = "modal-content",
         div(class = "modal-header",
-          tags$h4(id = "camera-settings-title", class = "modal-title", "Settings"),
+          tags$h4(id = "camera-settings-title", class = "modal-title", textOutput("settings_title", inline = TRUE)),
           tags$button(type = "button", class = "btn-close", `data-bs-dismiss` = "modal", `aria-label` = "Close")
         ),
         div(class = "modal-body",
@@ -21,7 +21,12 @@ settings_ui <- function() {
           uiOutput("camera_settings")
         )
       ))
-    )
+    ),
+    tags$script(HTML("
+      Shiny.addCustomMessageHandler('camera_saved', function(modalId) {
+        bootstrap.Modal.getInstance(document.getElementById(modalId))?.hide();
+      });
+    "))
   )
 }
 settings_login_ui <- function() {
