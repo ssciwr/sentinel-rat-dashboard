@@ -18,7 +18,7 @@ from .helpers import (
 
 def test_compute_filters_detections_below_threshold(get_session, setup):
     image = add_image(get_session, setup, at(10))
-    rat = [(setup.rat, 0.9)]
+    rat = [(setup.rat, 0.9)]  # 0.9 is the classification confidence
     add_detection(get_session, setup, image, rat, det_confidence=0.49)  # below
     add_detection(get_session, setup, image, rat, det_confidence=0.5)  # at threshold
     add_detection(get_session, setup, image, rat, det_confidence=0.8)  # above
@@ -40,7 +40,7 @@ def test_compute_filters_classifications_below_threshold(get_session, setup):
 
     assert daily_results(get_session) == {
         (setup.camera1.id, setup.det_model.id, setup.rat.id): (2, 0.6)
-    }
+    }  # 0.6 is the average classification confidence
 
 
 def test_compute_applies_threshold_to_all_models(get_session, setup):
@@ -95,21 +95,25 @@ def test_compute_marks_image_analyzed_when_all_results_are_filtered(get_session,
 
 def test_thresholds_do_not_filter_user_corrections(get_session, setup):
     image = add_image(get_session, setup, at(10))
+
     # the user set the species of a detection below both thresholds
     reclassified = add_detection(
         get_session, setup, image, [(setup.rat, 0.1)], det_confidence=0.1
     )
     add_classification_correction(get_session, setup, setup.mouse, reclassified)
+
     # the user confirmed a detection below the threshold, its classification passes
     confirmed = add_detection(
         get_session, setup, image, [(setup.rat, 0.9)], det_confidence=0.1
     )
     add_detection_correction(get_session, setup, image, confirmed)
+
     # a confirmed detection doesn't lift the threshold of its classification
     unclassified = add_detection(
         get_session, setup, image, [(setup.rat, 0.1)], det_confidence=0.1
     )
     add_detection_correction(get_session, setup, image, unclassified)
+
     # a detection added by a user has no confidence to filter
     added = add_detection_correction(get_session, setup, image)
     classification_correction_crud.add(
