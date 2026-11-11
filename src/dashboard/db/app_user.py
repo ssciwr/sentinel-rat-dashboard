@@ -13,7 +13,14 @@ from .data_model import AppUser
 
 
 class AppUserCRUD(CRUDBase[AppUser]):
-    """CRUD helper for the app_user table."""
+    """CRUD helper for the app_user table.
+
+    Password hashing (from plaintext to an encrypted form) happens in R before this function is called
+    This function is used to communicate between the SQL DB and the R app through python
+
+    For example set password updates the hashed(encrypted) password in the SQL database based on the
+    existing property for that for the AppUser model.
+    """
 
     def __init__(self):
         super().__init__(AppUser)
@@ -75,15 +82,6 @@ class AppUserCRUD(CRUDBase[AppUser]):
         return super().update(
             session, app_user_id, allowed_fields=allowed_fields, **changes
         )
-
-"""
-Password hashing (from plaintext to an encrypted form) happens in R before this function is called
-This function is used to communicate between the SQL DB and the R app through python
-
-For example set password updates the hashed(encrypted) password in the SQL database based on the 
-existing property for that for the AppUser model.
-"""
-
 
     def get_login(
         self, session: Session, username: str
