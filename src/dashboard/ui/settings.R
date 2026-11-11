@@ -54,7 +54,7 @@ camera_settings_form <- function(cameras) {
     textInput("camera_name", "Camera ID"),
     numericInput("camera_latitude", "Latitude", value = NA, min = -90, max = 90),
     numericInput("camera_longitude", "Longitude", value = NA, min = -180, max = 180),
-    selectInput("camera_status", "Status", c("Active" = "active", "Inactive" = "inactive", "Maintenance" = "maintenance"), selected = "active", selectize = FALSE),
+    selectInput("camera_status", "Status", c("Active" = "active", "Inactive" = "inactive"), selected = "active", selectize = FALSE),
     actionButton("camera_save", "Save camera", class = "btn-primary")
   )
 }

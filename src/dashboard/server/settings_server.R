@@ -75,7 +75,7 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
       return()
     }
     status <- input$camera_status
-    if (length(status) != 1 || is.na(status) || !status %in% c("active", "inactive", "maintenance")) {
+    if (length(status) != 1 || is.na(status) || !status %in% c("active", "inactive")) {
       showNotification("Choose a valid camera status.", type = "error")
       return()
     }

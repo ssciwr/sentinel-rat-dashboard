@@ -129,7 +129,7 @@ def camera_data():
             "name": "Camera 1 Updated",
             "location": (81.003, 7.003),
             "description": "Updated entrance camera",
-            "status": "maintenance",
+            "status": "inactive",
         },
     }
 
@@ -137,7 +137,6 @@ def camera_data():
 @pytest.fixture
 def created_camera(get_session, camera_data):
     def _create_camera():
-
         return camera_crud.add(get_session, **camera_data["create"])
 
     return _create_camera
