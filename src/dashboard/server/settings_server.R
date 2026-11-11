@@ -31,7 +31,8 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
     if (isTRUE(credentials$result)) {
       return(tagList(
         tags$li(settings_modal_link("settings_open", "Edit Existing Camera")),
-        tags$li(settings_modal_link("camera_add_open", "Add New Camera"))
+        tags$li(settings_modal_link("camera_add_open", "Add New Camera")),
+        tags$li(actionLink("settings_logout", "Log out", class = "dropdown-item"))
       ))
     }
     tagList(
@@ -75,12 +76,11 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
 
   output$camera_settings <- renderUI({
     req(credentials$result)
-    content <- if (can_manage_cameras()) {
+    if (can_manage_cameras()) {
       camera_settings_form(isolate(cameras()), adding = adding_camera())
     } else {
       tags$p("Camera changes require an active, signed-in account.")
     }
-    tagList(content, actionButton("settings_logout", "Log out"))
   })
 
   observeEvent(input$camera_selection, {
