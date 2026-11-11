@@ -4,6 +4,7 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
   credentials <- auth$credentials
   can_manage_cameras <- auth$can_manage_cameras
   cameras <- reactiveVal(data.frame())
+  adding_camera <- reactiveVal(FALSE)
 
   output$settings_button <- renderUI({
     if (isTRUE(credentials$result)) return(tagList(icon("gear"), " Settings"))
@@ -11,7 +12,8 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
   })
 
   output$settings_title <- renderText({
-    if (can_manage_cameras()) "Add/Edit Camera" else "Settings"
+    if (!can_manage_cameras()) return("Settings")
+    if (adding_camera()) "Add New Camera" else "Edit Existing Camera"
   })
 
   output$settings_auth <- renderUI({
@@ -22,39 +24,59 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
 
   observeEvent(input$settings_logout, {
     cameras(data.frame())
+    adding_camera(FALSE)
   })
 
   output$settings_menu <- renderUI({
-    label <- "Login"
     if (isTRUE(credentials$result)) {
-      label <- "Camera settings"
+      return(tagList(
+        tags$li(settings_modal_link("settings_open", "Edit Existing Camera")),
+        tags$li(settings_modal_link("camera_add_open", "Add New Camera"))
+      ))
     }
     tagList(
-      tags$li(actionLink("settings_open", label, class = "dropdown-item",
-        `data-bs-toggle` = "modal", `data-bs-target` = "#camera-settings")),
-      if (!isTRUE(credentials$result)) tags$li(account_registration_link("settings_register_open"))
+      tags$li(settings_modal_link("settings_open", "Login")),
+      tags$li(settings_modal_link("settings_register_open"))
     )
   })
+
+  # for edit mode, prefill fields from existing data.
+  update_camera_form <- function(camera = data.frame()) {
+    editing <- nrow(camera) == 1
+    updateTextInput(session, "camera_name", value = if (editing) camera$camera_name else "")
+    updateNumericInput(session, "camera_latitude", value = if (editing) camera$lat else NA)
+    updateNumericInput(session, "camera_longitude", value = if (editing) camera$lon else NA)
+    updateSelectInput(session, "camera_status", selected = if (editing) camera$status else "active")
+  }
 
   # Refresh camera options without exposing database errors in the dialog.
   refresh_cameras <- function() {
     tryCatch({
       rows <- fetch_camera_settings()
       cameras(rows)
-      updateSelectInput(session, "camera_selection", choices = c("New camera" = "", setNames(rows$camera_id, rows$camera_name)))
+      updateSelectInput(session, "camera_selection", choices = c("Select a camera" = "", setNames(rows$camera_id, rows$camera_name)), selected = "")
     }, error = function(error) {
       message("Camera settings could not be loaded.")
       showNotification("Camera list could not be loaded. Reopen settings to try again.", type = "error")
     })
   }
   observeEvent(list(input$settings_open, can_manage_cameras()), {
-    if (can_manage_cameras()) refresh_cameras()
+    req(can_manage_cameras())
+    adding_camera(FALSE)
+    refresh_cameras()
+    update_camera_form()
+  })
+
+  observeEvent(input$camera_add_open, {
+    req(can_manage_cameras())
+    adding_camera(TRUE)
+    update_camera_form()
   })
 
   output$camera_settings <- renderUI({
     req(credentials$result)
     content <- if (can_manage_cameras()) {
-      camera_settings_form(isolate(cameras()))
+      camera_settings_form(isolate(cameras()), adding = adding_camera())
     } else {
       tags$p("Camera changes require an active, signed-in account.")
     }
@@ -62,13 +84,9 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
   })
 
   observeEvent(input$camera_selection, {
-    req(can_manage_cameras())
+    req(can_manage_cameras(), !adding_camera())
     camera <- cameras()[cameras()$camera_id == input$camera_selection, , drop = FALSE]
-    editing <- nrow(camera) == 1
-    updateTextInput(session, "camera_name", value = if (editing) camera$camera_name else "")
-    updateNumericInput(session, "camera_latitude", value = if (editing) camera$lat else NA)
-    updateNumericInput(session, "camera_longitude", value = if (editing) camera$lon else NA)
-    updateSelectInput(session, "camera_status", selected = if (editing) camera$status else "active")
+    update_camera_form(camera)
   }, ignoreNULL = FALSE)
 
   observeEvent(input$camera_save, {
@@ -88,17 +106,20 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
       showNotification("Choose a valid camera status.", type = "error")
       return()
     }
+    camera_id <- NULL
+    if (!adding_camera()) {
+      if (!isTRUE(input$camera_selection %in% as.character(cameras()$camera_id))) {
+        showNotification("Select an existing camera to edit.", type = "error")
+        return()
+      }
+      camera_id <- as.integer(input$camera_selection)
+    }
     tryCatch({
-      camera_id <- NULL
-      if (nzchar(input$camera_selection)) camera_id <- as.integer(input$camera_selection)
       save_camera_settings(name, coordinates[1], coordinates[2], camera_id, status = status)
       showNotification("Camera saved.", type = "message")
       refresh_cameras()
       updateSelectInput(session, "camera_selection", selected = "")
-      updateTextInput(session, "camera_name", value = "")
-      updateNumericInput(session, "camera_latitude", value = NA)
-      updateNumericInput(session, "camera_longitude", value = NA)
-      updateSelectInput(session, "camera_status", selected = "active")
+      update_camera_form()
       session$sendCustomMessage("camera_saved", "camera-settings")
     }, error = function(error) {
       message("Camera settings could not be saved.")
