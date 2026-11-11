@@ -5,6 +5,7 @@ from dashboard.db import (
     classification_crud,
     taxonomy_crud,
 )
+from dashboard.db.data_model import ClassificationCorrection
 
 
 # test for SpeciesClassificationCRUD
@@ -186,3 +187,33 @@ def test_update_classification_correction_refuses_other_foreign_keys(
         classification_correction_crud.update(
             get_session, created_correction.id, **{field: 2}
         )
+
+
+def test_update_missing_classification_correction_returns_none(
+    get_session, classification_correction_data
+):
+    assert (
+        classification_correction_crud.update(
+            get_session, 999_999, **classification_correction_data["update"]
+        )
+        is None
+    )
+
+
+# the foreign keys keep a stored correction from referencing a missing item,
+# so the image lookup is checked with a correction that is not stored
+@pytest.mark.parametrize(
+    "reference",
+    [
+        {"species_classification_id": 999_999},
+        {"species_classification_id": None, "new_obj_det_id": 999_999},
+    ],
+    ids=["missing_classification", "missing_added_detection"],
+)
+def test_image_of_correction_with_missing_reference_is_none(get_session, reference):
+    correction = ClassificationCorrection(**reference)
+
+    assert (
+        classification_correction_crud._image_capture_id(get_session, correction)
+        is None
+    )

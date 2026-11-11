@@ -114,6 +114,32 @@ def test_update_detection_correction_update_fields(
     assert last_updated_after > last_updated_before
 
 
+def test_update_missing_detection_correction_returns_none(
+    get_session, detection_correction_data
+):
+    assert (
+        detection_correction_crud.update(
+            get_session, 999_999, **detection_correction_data["update"]
+        )
+        is None
+    )
+
+
+def test_update_detection_correction_without_changes_keeps_row(
+    get_session, created_detection_correction
+):
+    created_correction = created_detection_correction()
+    last_updated_before = created_correction.last_updated
+
+    updated_correction = detection_correction_crud.update(
+        get_session, created_correction.id
+    )
+
+    assert updated_correction is created_correction
+    assert updated_correction.last_updated == last_updated_before
+    assert updated_correction.daily_analysis_warning is None
+
+
 def test_top_classification_returns_none_without_classifications(
     created_object_detection,
 ):

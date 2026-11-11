@@ -4,6 +4,7 @@ from sqlalchemy import select
 from dashboard.db import (
     classification_correction_crud,
     classification_crud,
+    daily_analysis_result_crud,
     detection_correction_crud,
     image_crud,
 )
@@ -158,4 +159,52 @@ def test_correction_of_moved_image_updates_daily_results(get_session, setup):
 
     assert daily_results(get_session) == {
         (setup.camera1.id, setup.det_model.id, setup.mouse.id): (1, 1.0)
+    }
+
+
+def test_removing_an_added_detection_updates_daily_results(get_session, setup):
+    image = add_image(get_session, setup, at(10))
+    added = add_detection_correction(get_session, setup, image)
+    classification_correction_crud.add(
+        get_session,
+        species_classification_id=None,
+        new_obj_det_id=added.new_detection_id,
+        app_user_id=setup.user1.id,
+        corrected_taxonomy_id=setup.rat.id,
+        action="add",
+    )
+    compute(get_session)
+
+    detection_correction_crud.update(get_session, added.id, action="remove")
+
+    assert daily_results(get_session) == {}
+
+
+def test_recompute_for_missing_image_does_nothing(get_session, setup):
+    image = add_image(get_session, setup, at(10))
+    add_detection(get_session, setup, image, [(setup.rat, 0.6)])
+    compute(get_session)
+
+    daily_analysis_result_crud.recompute_for_image(get_session, 999_999)
+
+    assert daily_results(get_session) == {
+        (setup.camera1.id, setup.det_model.id, setup.rat.id): (1, 0.6)
+    }
+
+
+def test_commit_without_image_commits_without_recompute(get_session, setup):
+    image = add_image(get_session, setup, at(10))
+    detection = add_detection(get_session, setup, image, [(setup.rat, 0.6)])
+    compute(get_session)
+    classification = detection.species_classifications[0]
+    classification.confidence = 0.8
+
+    warning = daily_analysis_result_crud.commit_with_recompute(get_session, None)
+
+    get_session.rollback()  # nothing pending is left to roll back
+    get_session.refresh(classification)
+    assert warning is None
+    assert classification.confidence == 0.8
+    assert daily_results(get_session) == {
+        (setup.camera1.id, setup.det_model.id, setup.rat.id): (1, 0.6)
     }
