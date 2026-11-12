@@ -10,7 +10,7 @@ from dashboard.db.database import Base
 from . import utils
 
 
-class CRUDBase[ModelType]:
+class CRUDBase[ModelType: Base]:
     def __init__(self, model: type[ModelType]):
         """CRUD helper for a specific SQLAlchemy model class."""
 
