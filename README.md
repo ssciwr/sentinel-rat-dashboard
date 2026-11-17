@@ -8,6 +8,16 @@ Work in progress...
 
 R Shiny application for browsing animal detection results from PostgreSQL (PostGIS).
 
+Visitors can create an account by clicking "Settings" --> "Register".
+They can also log in from the settings menu, if they already have an account.
+
+When logged in, as a user you can update or edit cameras.
+
+So still todo is to decide whether we keep a public registration, or create accounts manually with a CLI for that on the server and then
+share log in details to trusted users, since right now all users can edit all cameras in the viewer system.
+Since editing the camera lat/lon affects the data pipeline, it's quite important to decide how that works.
+
+
 ## Scaffolded code
 
 * Initialize a PostgreSQL database with PostGIS extension
@@ -62,7 +72,7 @@ Methods implemented in the CRUD classes are summarized in the following table:
 | ObjectDetectionCRUD | ✓ | . | . | . | x | . |  |
 | TaxonomyCRUD | . | . | . | . | . | . |  |
 | SpeciesClassificationCRUD | ✓ | . | . | . | x | . |  |
-| AppUserCRUD | ✓ | . | . | . | ✓ | . |  |
+| AppUserCRUD | ✓ | . | . | . | ✓ | . | `get_login`, `set_password` |
 | DetectionCorrectionCRUD | ✓ | . | . | . | ✓ | . |  |
 | ClassificationCorrectionCRUD | ✓ | . | . | . | ✓ | . |  |
 | DailyAnalysisResultCRUD | . | . | . | . | . | . |  |
@@ -150,6 +160,10 @@ Initialize the database schema:
 python src/dashboard/init_db.py
 ```
 
+To prefill with fake data for app development:
+````bash 
+POSTGRES_HOST=localhost POSTGRES_PORT=5432 uv run python scripts/prefill_daily_analysis.py
+````
 Finally, run the R tests:
 ```bash
 Rscript -e 'source("src/dashboard/R/db.R"); library(testthat); test_dir("tests/testthat")'

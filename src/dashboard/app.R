@@ -1,14 +1,25 @@
 library(shiny)
-library(DBI)
 
-ui <- fluidPage(
-  titlePanel("SENTINEL-RAT Dashboard"),
-  mainPanel(
+source("R/db.R", local = TRUE)
+source("R/auth.R", local = TRUE)
+source("server/auth_server.R", local = TRUE)
+source("server/settings_server.R", local = TRUE)
+source("ui/settings.R", local = TRUE)
+
+ui <- bslib::page_navbar(
+  title = "SENTINEL-RAT Dashboard",
+  theme = bslib::bs_theme(version = 5),
+  bslib::nav_panel(
+    "Detections",
     tableOutput("results")
-  )
+  ),
+  bslib::nav_spacer(),
+  settings_ui()
 )
 
 server <- function(input, output, session) {
+  auth <- register_auth_server(input, session)
+  register_settings_server(input, output, session, auth = auth)
   db_session <- create_db_session()
 
   session$onSessionEnded(function() {

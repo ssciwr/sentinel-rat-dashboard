@@ -68,6 +68,7 @@ jobs:
         run: |
           Rscript install.R
           Rscript -e 'library(reticulate); packageVersion("reticulate")'
+          Rscript -e 'xml2::read_xml("<coverage/>")'
 
       - name: Initialize database schema
         run: python src/dashboard/init_db.py
@@ -79,6 +80,9 @@ jobs:
 
         env:
           TESTCONTAINERS_RYUK_DISABLED: true
+
+      - name: Run dashboard R tests
+        run: Rscript -e 'testthat::test_dir("src/dashboard/tests/testthat", stop_on_failure = TRUE)'
 
       - name: Run R tests with coverage
         run: |
