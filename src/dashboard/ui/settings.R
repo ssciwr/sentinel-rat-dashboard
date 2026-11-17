@@ -56,7 +56,8 @@ camera_settings_form <- function(cameras, adding = FALSE) {
   tagList(
     # let's you select the camera to edit - when clicked it uses the camera_id but displays the cameraId.
     if (!adding) selectInput("camera_selection", "Camera", c("Select a camera" = "", setNames(cameras$camera_id, cameras$camera_name)), selectize = FALSE),
-    textInput("camera_name", "Camera ID"),
+    textInput("camera_name", "Camera name"),
+    textAreaInput("camera_description", "Description (optional)", rows = 3),
     numericInput("camera_latitude", "Latitude", value = NA, min = -90, max = 90),
     numericInput("camera_longitude", "Longitude", value = NA, min = -180, max = 180),
     selectInput("camera_status", "Status", c("Active" = "active", "Inactive" = "inactive"), selected = "active", selectize = FALSE),

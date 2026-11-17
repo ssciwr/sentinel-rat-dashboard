@@ -31,20 +31,23 @@ class CameraCRUD(CRUDBase[Camera]):
         longitude: float,
         camera_id: int | None = None,
         status: str | None = None,
+        description: str | None = None,
     ) -> Camera:
         name = name.strip()
         if not name or len(name) > 255:
-            raise ValueError("Camera ID must contain 1 to 255 characters.")
+            raise ValueError("Camera name must contain 1 to 255 characters.")
         if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
             raise ValueError("Camera coordinates are out of range.")
         duplicate = select(Camera.id).where(Camera.name == name)
         if camera_id is not None:
             duplicate = duplicate.where(Camera.id != camera_id)
         if session.scalar(duplicate) is not None:
-            raise ValueError("Camera ID is already in use.")
+            raise ValueError("Camera name is already in use.")
         changes: dict[str, Any] = {"name": name, "location": (longitude, latitude)}
         if status is not None:
             changes["status"] = status
+        if description is not None:
+            changes["description"] = description
         if camera_id is None:
             return self.add(session, **changes)
         camera = self.update(session, camera_id, **changes)
@@ -57,6 +60,7 @@ class CameraCRUD(CRUDBase[Camera]):
         statement = select(
             Camera.id,
             Camera.name,
+            Camera.description,
             func.ST_Y(Camera.location).label("latitude"),
             func.ST_X(Camera.location).label("longitude"),
             Camera.status,
@@ -65,11 +69,12 @@ class CameraCRUD(CRUDBase[Camera]):
             {
                 "id": int(camera_id),
                 "name": name,
+                "description": description or "",
                 "latitude": float(latitude),
                 "longitude": float(longitude),
                 "status": status,
             }
-            for camera_id, name, latitude, longitude, status in session.execute(
+            for camera_id, name, description, latitude, longitude, status in session.execute(
                 statement
             )
         ]

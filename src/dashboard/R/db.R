@@ -170,6 +170,7 @@ fetch_cameras <- function(session = db_session) {
     data.frame(
       camera_id = as.integer(camera$id),
       camera_name = as.character(camera$name),
+      description = as.character(camera$description),
       lat = as.numeric(camera$latitude),
       lon = as.numeric(camera$longitude),
       status = as.character(camera$status),
@@ -185,12 +186,12 @@ fetch_camera_settings <- function() {
 }
 
 # for editing
-save_camera_settings <- function(name, latitude, longitude, camera_id = NULL, status = NULL) {
+save_camera_settings <- function(name, latitude, longitude, camera_id = NULL, status = NULL, description = NULL) {
   session <- create_db_session()
   on.exit(session$close())
   camera <- camera_crud$save_coordinates(
     session, name = name, latitude = latitude, longitude = longitude,
-    camera_id = camera_id, status = status
+    camera_id = camera_id, status = status, description = description
   )
   as.integer(camera$id)
 }

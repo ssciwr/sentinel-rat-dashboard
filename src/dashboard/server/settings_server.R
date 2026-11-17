@@ -45,6 +45,7 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
   update_camera_form <- function(camera = data.frame()) {
     editing <- nrow(camera) == 1
     updateTextInput(session, "camera_name", value = if (editing) camera$camera_name else "")
+    updateTextAreaInput(session, "camera_description", value = if (editing) camera$description else "")
     updateNumericInput(session, "camera_latitude", value = if (editing) camera$lat else NA)
     updateNumericInput(session, "camera_longitude", value = if (editing) camera$lon else NA)
     updateSelectInput(session, "camera_status", selected = if (editing) camera$status else "active")
@@ -98,7 +99,7 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
     coordinates <- c(input$camera_latitude, input$camera_longitude)
     if (length(name) != 1 || !nzchar(name) || nchar(name) > 255 || length(coordinates) != 2 ||
         any(!is.finite(coordinates)) || abs(coordinates[1]) > 90 || abs(coordinates[2]) > 180) {
-      showNotification("Enter a Camera ID, latitude (-90 to 90), and longitude (-180 to 180).", type = "error")
+      showNotification("Enter a camera name, latitude (-90 to 90), and longitude (-180 to 180).", type = "error")
       return()
     }
     status <- input$camera_status
@@ -115,7 +116,8 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
       camera_id <- as.integer(input$camera_selection)
     }
     tryCatch({
-      save_camera_settings(name, coordinates[1], coordinates[2], camera_id, status = status)
+      save_camera_settings(name, coordinates[1], coordinates[2], camera_id,
+        status = status, description = input$camera_description)
       showNotification("Camera saved.", type = "message")
       refresh_cameras()
       updateSelectInput(session, "camera_selection", selected = "")
@@ -123,7 +125,7 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
       session$sendCustomMessage("camera_saved", "camera-settings")
     }, error = function(error) {
       message("Camera settings could not be saved.")
-      showNotification("Camera could not be saved. Check that its ID is unique and try again.", type = "error")
+      showNotification("Camera could not be saved. Check that its name is unique and try again.", type = "error")
     })
   })
 }
