@@ -65,9 +65,12 @@ class CRUDBase[ModelType]:
         id: int,
         *,
         allowed_fields: set[str] | None = None,
+        commit: bool = True,
         **changes: Any,
     ) -> ModelType | None:
-        """Update a row and return the refreshed object, or None if missing."""
+        """Update a row and return the refreshed object, or None if missing.
+        With commit=False, the changes are only flushed, so the caller can
+        commit them together with other changes."""
 
         instance = session.get(self.model, id)
         if instance is None:
@@ -86,8 +89,12 @@ class CRUDBase[ModelType]:
         if allowed_fields is None:
             allowed_fields = all_non_pk_fk_fields
         else:
-            # ensure allowed_fields is a subset of all_non_pk_fk_fields
-            invalid_fields = set(allowed_fields) - all_non_pk_fk_fields
+            # ensure allowed_fields are non-primary-key columns;
+            # foreign keys are only updatable if they are allowed explicitly
+            all_non_pk_fields = {
+                col.name for col in self.model.__table__.columns if not col.primary_key
+            }
+            invalid_fields = set(allowed_fields) - all_non_pk_fields
             if invalid_fields:
                 raise ValueError(
                     f"Invalid allowed fields for {self.model.__tablename__}: {sorted(invalid_fields)}"
@@ -101,6 +108,10 @@ class CRUDBase[ModelType]:
 
         for key, value in changes.items():
             setattr(instance, key, value)
+
+        if not commit:
+            session.flush()
+            return instance
 
         utils.commit(session)
         session.refresh(instance)

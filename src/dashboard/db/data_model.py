@@ -181,6 +181,13 @@ class MLModel(Base):
         cascade=OWNED_RELATIONSHIP_CASCADE,
     )
 
+    # relationship to DailyAnalysisResult
+    daily_analysis_results = relationship(
+        "DailyAnalysisResult",
+        back_populates="ml_model",
+        cascade=OWNED_RELATIONSHIP_CASCADE,
+    )
+
 
 class ObjectDetection(Base):
     """ObjectDetection table"""
@@ -360,6 +367,10 @@ class DetectionCorrection(Base):
 
     __tablename__ = "detection_correction"
 
+    # not a column: set per instance, a message for the user after this correction was
+    # saved, e.g. if the daily analysis couldn't be updated, None if nothing to tell
+    daily_analysis_warning = None
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     object_detection_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("object_detection.id"), nullable=True, index=True
@@ -449,6 +460,11 @@ class DetectionCorrection(Base):
             "app_user_id",
             name="uq_detection_correction_new_detection_user",
         ),
+        # a correction is either of a model detection or an added detection
+        CheckConstraint(
+            "(object_detection_id IS NULL) <> (new_detection_id IS NULL)",
+            name="ck_detection_correction_one_target",
+        ),
     )
 
 
@@ -456,6 +472,10 @@ class ClassificationCorrection(Base):
     """Classification Correction table"""
 
     __tablename__ = "classification_correction"
+
+    # not a column: set per instance, a message for the user after this correction was
+    # saved, e.g. if the daily analysis couldn't be updated, None if nothing to tell
+    daily_analysis_warning = None
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     species_classification_id: Mapped[int | None] = mapped_column(
@@ -537,6 +557,16 @@ class ClassificationCorrection(Base):
             "app_user_id",
             name="uq_classification_correction_new_classification_user",
         ),
+        # a correction is either of a model classification or of an added detection
+        CheckConstraint(
+            "(species_classification_id IS NULL) <> (new_obj_det_id IS NULL)",
+            name="ck_classification_correction_one_target",
+        ),
+        # only a classification of an added detection gets a new_classification_id
+        CheckConstraint(
+            "(new_obj_det_id IS NULL) = (new_classification_id IS NULL)",
+            name="ck_classification_correction_new_id_with_added_detection",
+        ),
     )
 
 
@@ -555,6 +585,11 @@ class DailyAnalysisResult(Base):
     end_time: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), nullable=False, index=True
     )
+    # detection model whose detections are counted; counts of different detection
+    # models must not be summed, since the same animal is counted once per model
+    det_model_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("ml_model.id"), nullable=False, index=True
+    )
     taxonomy_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("taxonomy.id"), nullable=False, index=True
     )
@@ -564,10 +599,28 @@ class DailyAnalysisResult(Base):
     avg_confidence: Mapped[float] = mapped_column(
         Float, nullable=False
     )  # Average confidence of detections in this period
+    # confidence thresholds this row was computed with, 0.0 keeps all results
+    det_threshold: Mapped[float] = mapped_column(Float, nullable=False)
+    clas_threshold: Mapped[float] = mapped_column(Float, nullable=False)
+    # number of analyzed images of the camera and day, including those without results;
+    # fewer images in image_capture means some were deleted, so counts can't be rebuilt
+    image_count: Mapped[int] = mapped_column(Integer, nullable=False)
 
     __table_args__ = (
         UniqueConstraint(
-            "camera_id", "start_time", "taxonomy_id", name="uq_daily_analysis"
+            "camera_id",
+            "start_time",
+            "det_model_id",
+            "taxonomy_id",
+            name="uq_daily_analysis",
+        ),
+        CheckConstraint(
+            "det_threshold BETWEEN 0 AND 1",
+            name="ck_daily_analysis_det_threshold_range",
+        ),
+        CheckConstraint(
+            "clas_threshold BETWEEN 0 AND 1",
+            name="ck_daily_analysis_clas_threshold_range",
         ),
     )
 
@@ -579,4 +632,9 @@ class DailyAnalysisResult(Base):
     # relationship to Taxonomy
     taxonomy = relationship(
         "Taxonomy", back_populates="daily_analysis_results", foreign_keys=[taxonomy_id]
+    )
+
+    # relationship to MLModel
+    ml_model = relationship(
+        "MLModel", back_populates="daily_analysis_results", foreign_keys=[det_model_id]
     )
