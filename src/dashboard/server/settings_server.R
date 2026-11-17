@@ -8,7 +8,7 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
 
   output$settings_button <- renderUI({
     if (isTRUE(credentials$result)) return(tagList(icon("gear"), " Settings"))
-    tagList(icon("right-to-bracket"), " Sign in/up")
+    tagList(icon("right-to-bracket"), " Sign in")
   })
 
   output$settings_title <- renderText({
@@ -18,7 +18,6 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
 
   output$settings_auth <- renderUI({
     req(!isTRUE(credentials$result))
-    if (auth$registration()) return(settings_registration_ui())
     settings_login_ui()
   })
 
@@ -35,10 +34,7 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
         tags$li(actionLink("settings_logout", "Log out", class = "dropdown-item"))
       ))
     }
-    tagList(
-      tags$li(settings_modal_link("settings_open", "Login")),
-      tags$li(settings_modal_link("settings_register_open"))
-    )
+    tags$li(settings_modal_link("settings_open", "Login"))
   })
 
   # for edit mode, prefill fields from existing data.
@@ -97,14 +93,10 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
     }
     name <- trimws(input$camera_name)
     coordinates <- c(input$camera_latitude, input$camera_longitude)
-    if (length(name) != 1 || !nzchar(name) || nchar(name) > 255 || length(coordinates) != 2 ||
-        any(!is.finite(coordinates)) || abs(coordinates[1]) > 90 || abs(coordinates[2]) > 180) {
-      showNotification("Enter a camera name, latitude (-90 to 90), and longitude (-180 to 180).", type = "error")
-      return()
-    }
     status <- input$camera_status
-    if (length(status) != 1 || is.na(status) || !status %in% c("active", "inactive")) {
-      showNotification("Choose a valid camera status.", type = "error")
+    validation_message <- camera_settings_error(name, coordinates, status)
+    if (!is.null(validation_message)) {
+      showNotification(validation_message, type = "error")
       return()
     }
     camera_id <- NULL
@@ -128,4 +120,18 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
       showNotification("Camera could not be saved. Check that its name is unique and try again.", type = "error")
     })
   })
+}
+
+# AI-Generated
+# Check the camera name, coordinates, and status before saving.
+camera_settings_error <- function(camera_name, camera_coordinates, camera_status) {
+  if (length(camera_name) != 1 || is.na(camera_name) || !nzchar(camera_name) || nchar(camera_name) > 255 ||
+      length(camera_coordinates) != 2 || !all(is.finite(camera_coordinates)) ||
+      abs(camera_coordinates[1]) > 90 || abs(camera_coordinates[2]) > 180) {
+    return("Enter a camera name, latitude (-90 to 90), and longitude (-180 to 180).")
+  }
+  if (length(camera_status) != 1 || is.na(camera_status) || !camera_status %in% c("active", "inactive")) {
+    return("Choose a valid camera status.")
+  }
+  NULL
 }
