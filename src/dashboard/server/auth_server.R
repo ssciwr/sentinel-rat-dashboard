@@ -59,13 +59,12 @@ register_auth_server <- function(input, session, fetch_user = fetch_auth_user, c
     tryCatch({
       user <- input$settings_register_user
       password <- input$settings_register_password
-      if (!is.character(user) || length(user) != 1 || is.na(user) || !nzchar(trimws(user)) || nchar(trimws(user)) > 50) {
-        showNotification("Enter a username of 1 to 50 characters.", type = "error")
+      if (!is.character(user) || length(user) != 1 || is.na(user) || !grepl("^[A-Za-z0-9]{1,50}$", user)) {
+        showNotification("Use 1 to 50 letters (a-z, A-Z) or numbers (0-9) for your username.", type = "error")
         return()
       }
-      user <- trimws(user)
-      if (!is.character(password) || length(password) != 1 || is.na(password) || nchar(password) < 8) {
-        showNotification("Use at least 8 characters for your password.", type = "error")
+      if (!is.character(password) || length(password) != 1 || is.na(password) || nchar(password) < 12) {
+        showNotification("Use at least 12 characters for your password.", type = "error")
         return()
       }
       if (!identical(password, input$settings_register_password_confirm)) {

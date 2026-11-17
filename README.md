@@ -8,7 +8,7 @@ Work in progress...
 
 R Shiny application for browsing animal detection results from PostgreSQL (PostGIS).
 
-Visitors can create an account by clicking "Settings" --> "Register".
+The data is rendered for all visitors. Visitors can create an account by clicking "Settings" --> "Register".
 They can also log in from the settings menu, if they already have an account.
 
 When logged in, as a user you can update or edit cameras.
@@ -160,10 +160,7 @@ Initialize the database schema:
 python src/dashboard/init_db.py
 ```
 
-To prefill with fake data for app development:
-````bash 
-POSTGRES_HOST=localhost POSTGRES_PORT=5432 uv run python scripts/prefill_daily_analysis.py
-````
+
 Finally, run the R tests:
 ```bash
 Rscript -e 'source("src/dashboard/R/db.R"); library(testthat); test_dir("tests/testthat")'

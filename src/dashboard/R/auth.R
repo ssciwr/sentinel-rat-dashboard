@@ -30,8 +30,8 @@ set_auth_user_password <- function(user, password) {
 
 # Create an account without changing an existing user's password.
 create_auth_user <- function(user, password) {
-  stopifnot(is.character(user), length(user) == 1, !is.na(user), nzchar(trimws(user)), nchar(user) <= 50,
-    is.character(password), length(password) == 1, !is.na(password), nchar(password) >= 8)
+  stopifnot(is.character(user), length(user) == 1, !is.na(user), grepl("^[A-Za-z0-9]{1,50}$", user),
+    is.character(password), length(password) == 1, !is.na(password), nchar(password) >= 12)
   session <- create_db_session()
   on.exit(session$close())
   if (!is.null(app_user_crud$get_login(session, user))) return(FALSE)
