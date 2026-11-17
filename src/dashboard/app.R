@@ -1,10 +1,10 @@
 library(shiny)
 
-source("R/db.R", local = TRUE)
-source("R/auth.R", local = TRUE)
-source("server/auth_server.R", local = TRUE)
-source("server/settings_server.R", local = TRUE)
-source("ui/settings.R", local = TRUE)
+source(file.path("R", "db.R"), local = TRUE)
+source(file.path("R", "auth.R"), local = TRUE)
+source(file.path("server", "auth_server.R"), local = TRUE)
+source(file.path("server", "settings_server.R"), local = TRUE)
+source(file.path("ui", "settings.R"), local = TRUE)
 
 ui <- bslib::page_navbar(
   title = "SENTINEL-RAT Dashboard",

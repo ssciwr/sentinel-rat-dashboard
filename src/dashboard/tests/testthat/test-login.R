@@ -3,7 +3,8 @@ login_server <- function(input, output, session) {
   credentials <- register_auth_server(input, session)$credentials
 }
 
-default_login <- list(user = "first-user", password = "test-password", is_active = TRUE, stored_password = users$password[1])
+UPDATED_LOGIN_PASSWORD <- "updated-password"
+default_login <- list(user = PRIMARY_LOGIN_USER, password = "test-password", is_active = TRUE, stored_password = users$password[1])
 rejected_logins <- list(
   list(user = "missing"),
   list(user = "first-user "),
@@ -13,7 +14,7 @@ rejected_logins <- list(
   list(password = strrep("x", 4096)),
   list(is_active = FALSE),
   list(stored_password = NA_character_),
-  list(stored_password = scrypt::hashPassword("updated-password"))
+  list(stored_password = scrypt::hashPassword(UPDATED_LOGIN_PASSWORD))
 )
 login_notice <- new.env()
 
@@ -59,8 +60,8 @@ test_that("logout clears identity and the next login reads the current password"
     session$setInputs(settings_logout = 1)
     expect_false(credentials$result)
     expect_null(credentials$user_info)
-    store$rows$password <- scrypt::hashPassword("updated-password")
-    login_settings(session, "second-user", "updated-password", button = 2L)
+    store$rows$password <- scrypt::hashPassword(UPDATED_LOGIN_PASSWORD)
+    login_settings(session, "second-user", UPDATED_LOGIN_PASSWORD, button = 2L)
     expect_true(credentials$result)
     expect_identical(credentials$user_info$app_user_id, 2L)
     expect_false("password" %in% names(credentials$user_info))
@@ -72,7 +73,7 @@ test_that("a wrong password does not work", {
   rlang::local_bindings(fetch_auth_user = store$fetch, showNotification = record_login_notice, .env = environment(register_auth_server))
   for (database_failed in c(FALSE, TRUE)) testServer(login_server, {
     store$fail <- database_failed
-    username <- if (database_failed) "first-user" else c("first-user", "second-user")
+    username <- if (database_failed) PRIMARY_LOGIN_USER else c(PRIMARY_LOGIN_USER, "second-user")
     expect_message(login_settings(session, user = username), "Settings login could not be verified")
     expect_false(credentials$result)
     expect_null(credentials$user_info)

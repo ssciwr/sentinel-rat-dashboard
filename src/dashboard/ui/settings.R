@@ -1,3 +1,5 @@
+CREATE_ACCOUNT_LABEL <- "Create account"
+
 # Contains the login/register options
 settings_ui <- function() {
   bslib::nav_item(
@@ -35,18 +37,18 @@ settings_login_ui <- function() {
   login$find(".row > .col-sm-4")$removeAttrs("class")$addClass("col-12")$allTags()
 }
 
-settings_modal_link <- function(id, label = "Create account", class = "dropdown-item") {
+settings_modal_link <- function(id, label = CREATE_ACCOUNT_LABEL, class = "dropdown-item") {
   actionLink(id, label, class = class,
     `data-bs-toggle` = "modal", `data-bs-target` = "#camera-settings")
 }
 
 settings_registration_ui <- function() {
   tagList(
-    tags$h4("Create account"),
+    tags$h4(CREATE_ACCOUNT_LABEL),
     textInput("settings_register_user", "Username"),
     passwordInput("settings_register_password", "Password"),
     passwordInput("settings_register_password_confirm", "Confirm password"),
-    div(class = "mb-3", actionButton("settings_create_account", "Create account", class = "btn-primary")),
+    div(class = "mb-3", actionButton("settings_create_account", CREATE_ACCOUNT_LABEL, class = "btn-primary")),
     actionLink("settings_login_open", "Back to login")
   )
 }
@@ -60,7 +62,7 @@ camera_settings_form <- function(cameras, adding = FALSE) {
     textAreaInput("camera_description", "Description (optional)", rows = 3),
     numericInput("camera_latitude", "Latitude", value = NA, min = -90, max = 90),
     numericInput("camera_longitude", "Longitude", value = NA, min = -180, max = 180),
-    selectInput("camera_status", "Status", c("Active" = "active", "Inactive" = "inactive"), selected = "active", selectize = FALSE),
+    selectInput("camera_status", "Status", c(Active = "active", Inactive = "inactive"), selected = "active", selectize = FALSE),
     actionButton("camera_save", if (adding) "Create camera" else "Save camera", class = "btn-primary")
   )
 }

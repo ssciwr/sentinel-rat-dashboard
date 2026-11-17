@@ -1,7 +1,9 @@
+AUTH_PACKAGES <- c("shinymanager", "scrypt")
+CRAN_REPOSITORY <- "https://cran.r-project.org"
+
 packages <- c(
   "shiny",
-  "shinymanager",
-  "scrypt",
+  AUTH_PACKAGES,
   "RPostgres",
   "DBI",
   "dplyr",
@@ -12,12 +14,12 @@ packages <- c(
   "xml2",
   "reticulate"
 )
-package_repositories <- getOption("repos", c(CRAN = "https://cran.r-project.org"))
-package_repositories[package_repositories == "@CRAN@"] <- "https://cran.r-project.org"
+package_repositories <- getOption("repos", c(CRAN = CRAN_REPOSITORY))
+package_repositories[package_repositories == "@CRAN@"] <- CRAN_REPOSITORY
 
 install.packages(
-  setdiff(packages, c("shinymanager", "scrypt")),
+  setdiff(packages, AUTH_PACKAGES),
   repos = package_repositories
 )
-install.packages(c("shinymanager", "scrypt"), repos = "https://cran.r-project.org")
+install.packages(AUTH_PACKAGES, repos = CRAN_REPOSITORY)
 
