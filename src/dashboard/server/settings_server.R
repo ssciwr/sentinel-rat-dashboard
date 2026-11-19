@@ -1,6 +1,6 @@
 # Only signed in users can manage cameras
 register_settings_server <- function(input, output, session, fetch_user = fetch_auth_user,
-    auth = register_auth_server(input, session, fetch_user)) {
+    auth = register_auth_server(input, session, fetch_user), state = NULL) {
   credentials <- auth$credentials
   can_manage_cameras <- auth$can_manage_cameras
   cameras <- reactiveVal(data.frame())
@@ -58,11 +58,16 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
       showNotification("Camera list could not be loaded. Reopen settings to try again.", type = "error")
     })
   }
-  observeEvent(list(input$settings_open, can_manage_cameras()), {
+  observeEvent(list(input$settings_open, input$camera_edit_open, can_manage_cameras()), {
     req(can_manage_cameras())
     adding_camera(FALSE)
     refresh_cameras()
-    update_camera_form()
+    camera <- data.frame()
+    if (!is.null(state)) {
+      camera <- cameras()[cameras()$camera_name %in% state$selected_camera_name(), , drop = FALSE]
+    }
+    updateSelectInput(session, "camera_selection", selected = if (nrow(camera) == 1) camera$camera_id else "")
+    update_camera_form(camera)
   })
 
   observeEvent(input$camera_add_open, {
@@ -108,10 +113,19 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
       camera_id <- as.integer(input$camera_selection)
     }
     tryCatch({
-      save_camera_settings(name, coordinates[1], coordinates[2], camera_id,
+      saved_id <- save_camera_settings(name, coordinates[1], coordinates[2], camera_id,
         status = status, description = input$camera_description)
+      previous_name <- cameras()$camera_name[cameras()$camera_id %in% camera_id]
+      camera <- data.frame(camera_id = saved_id, camera_name = name, description = input$camera_description,
+        lat = coordinates[1], lon = coordinates[2], status = status)
+      cameras(dplyr::bind_rows(cameras()[!cameras()$camera_id %in% saved_id, , drop = FALSE], camera))
+      if (!is.null(state)) {
+        camera_data <- update_camera_map_data(state$camera_day_logs(), state$camera_images(), camera, previous_name)
+        state$camera_day_logs(camera_data$camera_day_logs)
+        state$camera_images(camera_data$camera_images)
+        state$selected_camera_name(NULL)
+      }
       showNotification("Camera saved.", type = "message")
-      refresh_cameras()
       updateSelectInput(session, "camera_selection", selected = "")
       update_camera_form()
       session$sendCustomMessage("camera_saved", "camera-settings")
@@ -120,6 +134,20 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
       showNotification("Camera could not be saved. Check that its name is unique and try again.", type = "error")
     })
   })
+}
+
+# Update camera locations and names without reloading their detections.
+update_camera_map_data <- function(camera_logs, camera_frames, camera, previous_name = NULL) {
+  matching_camera <- camera_logs$camera_name %in% previous_name
+  if (any(matching_camera)) {
+    camera_logs[matching_camera, c("camera_name", "lat", "lon")] <- camera[c("camera_name", "lat", "lon")]
+  } else {
+    camera_days <- merge(camera, data.frame(date = unique(camera_logs$date)), by = NULL)
+    camera_days[c("rat_count", "other_count", "predator_count", "predator_pressure")] <- 0
+    camera_logs <- dplyr::bind_rows(camera_logs, camera_days)
+  }
+  camera_frames$camera_name[camera_frames$camera_name %in% previous_name] <- camera$camera_name
+  list(camera_day_logs = camera_logs, camera_images = camera_frames)
 }
 
 # AI-Generated

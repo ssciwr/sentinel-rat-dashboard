@@ -3,7 +3,7 @@ settings_ui <- function() {
   bslib::nav_item(
     div(class = "dropdown",
       tags$button(
-        type = "button", class = "btn btn-outline-secondary btn-sm dropdown-toggle",
+        type = "button", class = "btn btn-primary btn-sm dropdown-toggle",
         `data-bs-toggle` = "dropdown", `aria-expanded` = "false",
         uiOutput("settings_button", inline = TRUE)
       ),
@@ -35,9 +35,9 @@ settings_login_ui <- function() {
   login$find(".row > .col-sm-4")$removeAttrs("class")$addClass("col-12")$allTags()
 }
 
-settings_modal_link <- function(id, label, class = "dropdown-item") {
+settings_modal_link <- function(id, label, class = "dropdown-item", ...) {
   actionLink(id, label, class = class,
-    `data-bs-toggle` = "modal", `data-bs-target` = "#camera-settings")
+    `data-bs-toggle` = "modal", `data-bs-target` = "#camera-settings", ...)
 }
 
 # The original camera edit form - sorry, this was added and then removed and then added back here as it made sense to be in this file, since the user doesn't particualrly need to be on the map view to edit cameras, and there was no where that worked well aesthetically on the map itself to have a general Add camera form / button
