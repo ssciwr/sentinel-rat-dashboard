@@ -4,6 +4,10 @@ CRAN_REPOSITORY <- "https://cran.r-project.org"
 packages <- c(
   "shiny",
   AUTH_PACKAGES,
+   "bslib",
+"leaflet",
+    "plotly",
+  "scales",
   "RPostgres",
   "DBI",
   "dplyr",
