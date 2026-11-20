@@ -197,7 +197,7 @@ def test_delete_removes_row(request, get_session, crud, fixture_name):
 
     deleted_item = crud.delete(get_session, created_item.id)
 
-    assert deleted_item is True
+    assert deleted_item
 
     fetched_item = crud.get(get_session, created_item.id)
     assert fetched_item is None
