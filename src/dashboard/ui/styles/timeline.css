@@ -1,0 +1,143 @@
+.timeline-controls { margin-bottom: 8px; color: #f7efe2; }
+.timeline-date-controls .shiny-input-container { margin-bottom: 0; }
+.timeline-date-field { display: flex; align-items: center; gap: 8px; }
+.timeline-date-field label { margin: 0; font-size: 13px; }
+.timeline-date-field select { height: 34px; border-color: rgba(216, 197, 111, 0.65); border-radius: 6px; background-color: #203a32; background-image: none; color: #f7efe2; cursor: pointer; appearance: auto; }
+.timeline-date-field select:focus { border-color: #d8c56f; box-shadow: 0 0 0 2px rgba(216, 197, 111, 0.2); }
+      .global-date-bar {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 900;
+        width: 100%;
+        padding: 8px 30px 6px;
+        border: 0;
+        border-radius: 0;
+        background: rgba(12, 14, 16, 0.9);
+        box-shadow: 0 -8px 26px rgba(0, 0, 0, 0.24);
+      }
+      .global-date-slider {
+        min-width: 0;
+      }
+      .global-date-slider .irs-min,
+      .global-date-slider .irs-max {
+        display: none;
+      }
+      .map-zoom-controls {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+        padding: 0;
+      }
+      .global-date-slider .shiny-input-container:not(.shiny-input-container-inline) {
+        width: 100%;
+        margin-bottom: 0;
+      }
+      .global-date-slider label.control-label {
+        display: none;
+      }
+      .global-date-slider .irs {
+        height: 62px;
+      }
+      .global-date-slider .irs--shiny .irs-line,
+      .global-date-slider .irs-line {
+        top: 27px;
+        height: 8px;
+        border: 0;
+        border-radius: 999px;
+        background: rgba(247, 239, 226, 0.2);
+      }
+      .global-date-slider .irs--shiny .irs-bar,
+      .global-date-slider .irs-bar {
+        top: 27px;
+        height: 8px;
+        border: 0;
+        border-radius: 999px;
+        background: #d8c56f;
+        box-shadow: 0 0 0 3px rgba(216, 197, 111, 0.18);
+      }
+      .global-date-slider .irs--shiny .irs-handle,
+      .global-date-slider .irs-slider {
+        top: 19px;
+        width: 24px;
+        height: 24px;
+        border: 3px solid #f7efe2;
+        border-radius: 50%;
+        background: #d8c56f;
+        box-shadow: 0 3px 10px rgba(13, 29, 25, 0.28);
+      }
+      .global-date-slider .irs--shiny .irs-single,
+      .global-date-slider .irs-single {
+        top: -1px;
+        padding: 4px 9px;
+        border-radius: 7px;
+        background: #d8c56f;
+        color: #171a16;
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .global-date-slider .irs--shiny .irs-min,
+      .global-date-slider .irs--shiny .irs-max,
+      .global-date-slider .irs-min,
+      .global-date-slider .irs-max {
+        border-radius: 6px;
+        background: rgba(0, 0, 0, 0.22);
+        color: #f7efe2;
+        font-size: 12px;
+      }
+      .global-date-slider .irs--shiny .irs-max,
+      .global-date-slider .irs-max {
+        display: none;
+      }
+      .global-date-slider .irs-grid-pol {
+        background: rgba(247, 239, 226, 0.54);
+      }
+      .global-date-slider .irs-grid-text {
+        color: #f7efe2;
+        font-size: 12px;
+      }
+      .sidebar-map-filter .irs {
+        height: 44px;
+      }
+      .sidebar-map-filter .irs--shiny .irs-line,
+      .sidebar-map-filter .irs-line {
+        top: 24px;
+        height: 5px;
+        border: 0;
+        border-radius: 999px;
+        background: rgba(247, 239, 226, 0.2);
+      }
+      .sidebar-map-filter .irs--shiny .irs-bar,
+      .sidebar-map-filter .irs-bar {
+        top: 24px;
+        height: 5px;
+        border: 0;
+        border-radius: 999px;
+        background: #d8c56f;
+      }
+      .sidebar-map-filter .irs--shiny .irs-handle,
+      .sidebar-map-filter .irs-slider {
+        top: 17px;
+        width: 19px;
+        height: 19px;
+        border: 2px solid #f7efe2;
+        border-radius: 50%;
+        background: #d8c56f;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.34);
+      }
+      .sidebar-map-filter .irs--shiny .irs-single,
+      .sidebar-map-filter .irs-single {
+        top: 0;
+        padding: 3px 7px;
+        border-radius: 6px;
+        background: #d8c56f;
+        color: #171a16;
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .sidebar-map-filter .irs--shiny .irs-single:before,
+      .sidebar-map-filter .irs-single:before {
+        border-top-color: #d8c56f;
+      }
