@@ -1,0 +1,61 @@
+.leaflet-control-attribution { display: none !important; }
+.marker-size-legend { width: 220px; padding: 10px 12px; border-radius: 5px; background: rgba(15, 20, 18, 0.85); color: #f7efe2; font-size: 12px; }
+.heatmap-legend-title { font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.heatmap-legend-note { opacity: 0.75; border-color: rgba(247, 239, 226, 0.2) !important; }
+.pressure-legend-scale { height: 10px; border-radius: 999px; }
+.heatmap-colour-key,
+.heatmap-empty-key { display: inline-block; flex-shrink: 0; width: 18px; height: 18px; border: 1px solid #60736a66; border-radius: 5px; }
+.heatmap-empty-key { border-radius: 50%; border-color: rgba(247, 239, 226, 0.65); background: transparent; }
+.heatmap-detail-key,
+#heatmap_legend[data-detail="true"] .heatmap-grid-key { display: none; }
+#heatmap_legend[data-detail="true"] .heatmap-detail-key { display: block; }
+.detail-pressure-marker { display: grid; place-items: center; width: 64px; height: 36px; border: 2px solid #ffffff; border-radius: 999px; box-shadow: 0 2px 8px #10251f59; font-size: 13px; font-weight: 700; }
+.detail-pressure-marker.is-empty { background: #f8faf6 !important; color: #60736a !important; border-color: #60736a; }
+      .detail-activity-label {
+        pointer-events: auto;
+        background: transparent !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+      }
+      .detail-activity-label::before {
+        display: none;
+      }
+      .detail-activity-marker {
+        position: relative;
+        display: inline-grid;
+        grid-template-rows: var(--detail-size) auto;
+        justify-items: center;
+        align-items: start;
+        width: var(--detail-size);
+        min-height: calc(var(--detail-size) + 17px);
+        height: auto;
+        cursor: pointer;
+      }
+      .detail-activity-pie {
+        width: var(--detail-size);
+        height: var(--detail-size);
+        border: 0;
+        border-radius: 50%;
+        background: conic-gradient(#7b9eb5 0 var(--prey-deg), #e6dfcf var(--prey-deg) var(--predator-deg), rgba(255, 255, 255, 0.24) var(--predator-deg) 360deg);
+        box-shadow: 0 2px 7px rgba(0, 0, 0, 0.34);
+      }
+      .detail-activity-count {
+        min-width: 22px;
+        margin-top: 4px;
+        padding: 3px 7px;
+        border-radius: 999px;
+        background: rgba(12, 14, 16, 0.82);
+        color: #ffffff;
+        font-size: 11px;
+        text-align: center;
+        font-weight: 900;
+        line-height: 1;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.82);
+      }
+      .detail-activity-marker.is-empty .detail-activity-pie {
+        background: rgba(255, 255, 255, 0.12);
+      }
+      .detail-activity-marker.is-empty .detail-activity-count {
+        display: none;
+      }
