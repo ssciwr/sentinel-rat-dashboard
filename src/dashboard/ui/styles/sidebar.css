@@ -1,0 +1,13 @@
+.sidebar-map-controls .shiny-input-container { width: 100%; }
+.sidebar-map-filter { margin-top: 1.25rem; }
+.sidebar-filter-heading { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-weight: 600; font-size: 0.875rem; }
+.predator-info-button.btn { border: 0; padding: 0.25rem; color: #f7efe2; }
+.heatmap-filter-panel.is-hidden { display: none; }
+.filter-invert-control { margin-top: 0.5rem; font-size: 0.8rem; }
+.filter-invert-control .shiny-input-container { margin-bottom: 0; }
+.filter-invert-control .radio { margin: 0.35rem 0; }
+.sidebar-map-filter .irs-grid,
+.sidebar-map-filter .irs-min,
+.sidebar-map-filter .irs-max { display: none; }
+.predator-species-list { margin: 0; padding-left: 1.25rem; }
+.predator-species-list li + li { margin-top: 0.5rem; }
