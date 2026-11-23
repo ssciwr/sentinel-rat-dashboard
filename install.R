@@ -3,6 +3,7 @@ CRAN_REPOSITORY <- "https://cran.r-project.org"
 
 packages <- c(
   "shiny",
+  "conductor",
   AUTH_PACKAGES,
    "bslib",
 "leaflet",
