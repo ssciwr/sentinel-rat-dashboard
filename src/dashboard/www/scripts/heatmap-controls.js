@@ -47,7 +47,7 @@
     sendInput("heatmap_map_shape_click", { id: camera.id, nonce: Date.now() });
   }
   /* AI-Generated
-   * Adds one square cell and its activity indicator to a pending Leaflet layer.
+   * Adds one square camera cell to a pending Leaflet layer.
    */
   function addHeatmapCell(layer, camera) {
     var cell = window.L.rectangle(
@@ -63,52 +63,6 @@
     cell.bindTooltip(cameraTooltip(camera.tooltip), { sticky: true });
     cell.on("click", function() { selectCamera(camera); });
     layer.addLayer(cell);
-
-    if (camera.has_activity) {
-      if (pendingHeatmapView.metric === "predator") {
-        return;
-      }
-      var plus = window.L.marker([camera.lat, camera.lon], {
-        icon: window.L.divIcon({
-          className: "heatmap-point-icon",
-          html: "<span class='heatmap-point-plus'>+</span>",
-          iconSize: [16, 16],
-          iconAnchor: [8, 8]
-        }),
-        interactive: false
-      });
-      layer.addLayer(plus);
-      return;
-    }
-
-    layer.addLayer(window.L.circleMarker([camera.lat, camera.lon], {
-      radius: 4,
-      fillColor: "#ffffff",
-      fillOpacity: 0.12,
-      color: "rgba(255, 255, 255, 0.86)",
-      opacity: 0.45,
-      weight: 1,
-      interactive: false
-    }));
-  }
-  /* AI-Generated
-   * Adds one camera detail marker with dimensions for its activity or pressure view.
-   */
-  function addDetailMarker(layer, camera) {
-    var showPressure = pendingHeatmapView.metric === "predator";
-    var marker = window.L.marker([camera.lat, camera.lon], {
-      icon: window.L.divIcon({
-        className: "detail-activity-label",
-        html: camera.detail_html,
-        iconSize: showPressure ? [64, 36] : [60, 81],
-        iconAnchor: showPressure ? [32, 18] : [30, 30]
-      })
-    });
-    /* AI-Generated
-     * Selects the camera represented by this detail marker.
-     */
-    marker.on("click", function() { selectCamera(camera); });
-    layer.addLayer(marker);
   }
   /* AI-Generated
    * Replaces map layers only after the next complete layer has been built.
@@ -121,20 +75,8 @@
     try {
       var nextLayer = window.L.layerGroup();
       var cameras = pendingHeatmapView.cameras || [];
-      var visibleCameras = cameras.filter(function(camera) {
-        return map.getBounds().contains([camera.lat, camera.lon]);
-      });
-      var showDetail = pendingHeatmapView.show_cells && visibleCameras.length > 0 && visibleCameras.length <= 4;
-      var legend = document.getElementById("heatmap_legend");
-      if (legend) {
-        legend.setAttribute("data-detail", String(showDetail));
-      }
       if (pendingHeatmapView.show_cells) {
-        if (showDetail) {
-          visibleCameras.forEach(function(camera) { addDetailMarker(nextLayer, camera); });
-        } else {
-          cameras.forEach(function(camera) { addHeatmapCell(nextLayer, camera); });
-        }
+        cameras.forEach(function(camera) { addHeatmapCell(nextLayer, camera); });
       }
       nextLayer.addTo(map);
       if (activeHeatmapLayer) {
@@ -148,7 +90,7 @@
     }
   }
   /* AI-Generated
-   * Connects viewport changes to the latest R-supplied heatmap view.
+   * Prepares map resizing and signals when the browser can receive camera cells.
    */
   function attachHeatmapRenderer() {
     var map = heatmapMap();
@@ -158,7 +100,6 @@
     }
     if (!map._sentinelHeatmapRendererAttached) {
       map._sentinelHeatmapRendererAttached = true;
-      map.on("moveend zoomend", renderHeatmapView);
       if (window.ResizeObserver) {
         map._sentinelResizeObserver = new ResizeObserver(invalidateHeatmapMap);
         map._sentinelResizeObserver.observe(map.getContainer());
@@ -239,16 +180,12 @@
     document.addEventListener("click", function(event) {
       var canSearch = event.target && event.target.closest;
       var button = canSearch ? event.target.closest(".heatmap-view-button") : null;
-      var marker = canSearch ? event.target.closest(".detail-activity-marker") : null;
       var allFiltersButton = canSearch ? event.target.closest("#toggle_all_filters") : null;
       if (allFiltersButton) {
         setAdvancedFilters(!advancedFilters);
       }
       if (button) {
         setActiveHeatmapMetric(button.getAttribute("data-heatmap-metric"));
-      }
-      if (marker) {
-        sendInput("heatmap_detail_marker_click", { id: marker.getAttribute("data-camera-name"), nonce: Date.now() });
       }
     });
     document.addEventListener("change", function(event) {

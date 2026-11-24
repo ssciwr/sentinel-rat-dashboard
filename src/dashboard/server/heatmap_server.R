@@ -50,14 +50,12 @@ register_heatmap_server <- function(input, output, session, state) {
   }, ignoreInit = TRUE)
 
 # Manage currently selected camera by it's ID
-  lapply(c("heatmap_map_shape_click", "heatmap_map_marker_click", "heatmap_detail_marker_click"), function(click_input) {
-    observeEvent(input[[click_input]], {
-      camera_name <- input[[click_input]]$id
-      if (!is.null(camera_name)) {
-        state$selected_camera_name(camera_name)
-        state$selected_image_index(1)
-      }
-    })
+  observeEvent(input$heatmap_map_shape_click, {
+    camera_name <- input$heatmap_map_shape_click$id
+    if (!is.null(camera_name)) {
+      state$selected_camera_name(camera_name)
+      state$selected_image_index(1)
+    }
   })
 
   observeEvent(input$heatmap_map_render_status, {
@@ -98,8 +96,9 @@ register_heatmap_server <- function(input, output, session, state) {
       title = "Predator species",
       tags$ul(
         class = "predator-species-list",
-        tags$li(tags$em(predator_species_labels[1])),
-        tags$li(tags$em(predator_species_labels[2]))
+        # AI-Generated
+        # List every predator species represented in the analysis.
+        lapply(predator_species_labels, function(species) tags$li(tags$em(species)))
       ),
       footer = modalButton("Done"),
       easyClose = TRUE,
