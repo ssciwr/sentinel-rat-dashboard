@@ -6,12 +6,6 @@ heatmap_view_payload <- function(view) {
   }
 
   cameras <- heatmap_cells_for_metric(view$display_grid, view$metric)
-  max_activity <- if (nrow(view$display_grid) == 0) 0 else max(view$display_grid$total_activity, na.rm = TRUE)
-  detail_html <- if (view$metric == "predator") {
-    detail_pressure_labels(cameras)
-  } else {
-    detail_pie_labels(cameras, max_activity)
-  }
 
   list(
     metric = view$metric,
@@ -20,17 +14,13 @@ heatmap_view_payload <- function(view) {
       row <- cameras[index, ]
       list(
         id = as.character(row$camera_name),
-        lat = as.numeric(row$lat),
-        lon = as.numeric(row$lon),
         lat1 = as.numeric(row$cell_lat1),
         lon1 = as.numeric(row$cell_lon1),
         lat2 = as.numeric(row$cell_lat2),
         lon2 = as.numeric(row$cell_lon2),
         fill_colour = as.character(row$fill_colour),
         fill_opacity = as.numeric(row$fill_opacity),
-        has_activity = isTRUE(row$metric_has_activity),
-        tooltip = as.character(row$tooltip),
-        detail_html = as.character(detail_html[index])
+        tooltip = as.character(row$tooltip)
       )
     })
   )
