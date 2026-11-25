@@ -1,23 +1,16 @@
 # Support for inspector tool drawing bbxoes on frames etc
 
 # These are mostly AI generated to iterate through images, render them, render BBOXes, with the rendered bbox positions checked.
-camera_frame_image <- function(image_id, camera_name, timestamp, has_activity) {
-  if ("image_path" %in% names(camera_images)) {
-    image_path <- camera_images$image_path[match(image_id, camera_images$image_id)]
+camera_frame_image <- function(frame) {
+  if ("image_path" %in% names(frame)) {
+    image_path <- frame$image_path
     if (length(image_path) != 1 || is.na(image_path) || !file.exists(image_path)) return(NULL)
     return(base64enc::dataURI(file = image_path, mime = mime::guess_type(image_path)))
   }
   "camera-placeholder.png"
 }
 
-active_camera_images <- function(camera_name, selected_date, camera_frames = camera_images) {
-  include_empty <- "image_path" %in% names(camera_frames)
-  camera_frames %>%
-    filter(.data$camera_name == .env$camera_name, date == selected_date, detection_count > 0 | include_empty) %>%
-    arrange(timestamp)
-}
-
-image_annotations <- function(selected_image_id, frame_detections = detections) {
+image_annotations <- function(selected_image_id, frame_detections) {
   image_detections <- frame_detections %>% filter(image_id == selected_image_id)
   if (nrow(image_detections) == 0) {
     return(list())
@@ -63,8 +56,8 @@ image_annotations <- function(selected_image_id, frame_detections = detections) 
   })
 }
 
-preview_bbox_tags <- function(selected_image_id) {
-  image_detections <- detections %>% filter(image_id == selected_image_id)
+preview_bbox_tags <- function(selected_image_id, frame_detections) {
+  image_detections <- frame_detections %>% filter(image_id == selected_image_id)
   if (nrow(image_detections) == 0) {
     return(NULL)
   }
@@ -90,12 +83,12 @@ preview_bbox_tags <- function(selected_image_id) {
   })
 }
 
-camera_frame_payload <- function(frame, annotations = image_annotations(frame$image_id)) {
+camera_frame_payload <- function(frame, annotations) {
   list(
     image_id = frame$image_id,
     camera_name = frame$camera_name,
     timestamp = format(frame$timestamp, "%Y-%m-%d %H:%M UTC"),
-    image_url = camera_frame_image(frame$image_id, frame$camera_name, frame$timestamp, frame$detection_count > 0),
+    image_url = camera_frame_image(frame),
     detection_count = frame$detection_count,
     annotations = annotations
   )
