@@ -43,6 +43,7 @@ add_src_to_python_path()
 
 db_module <- reticulate::import("dashboard.db")
 db_database_module <- reticulate::import("dashboard.db.database")
+analysis_timezone <- as.character(reticulate::import("dashboard.db.analysis_result")$ANALYSIS_TZ)
 
 detection_crud <- db_module$detection_crud
 camera_crud <- db_module$camera_crud
@@ -137,6 +138,7 @@ daily_analysis_result_to_row <- function(daily_analysis_result) {
   data.frame(
     id = as.integer(daily_analysis_result$id),
     camera_id = as.integer(daily_analysis_result$camera_id),
+    det_model_id = as.integer(daily_analysis_result$det_model_id),
     start_time = reticulate::py_to_r(daily_analysis_result$start_time),
     end_time = reticulate::py_to_r(daily_analysis_result$end_time),
     taxonomy_id = as.integer(daily_analysis_result$taxonomy_id),
@@ -196,3 +198,25 @@ save_camera_settings <- function(name, latitude, longitude, camera_id = NULL, st
   as.integer(camera$id)
 }
 
+taxonomy_to_row <- function(taxonomy) {
+  data.frame(
+    taxonomy_id = as.integer(taxonomy$id),
+    species_label = species_label(taxonomy$genus, taxonomy$species),
+    role = predator_label(reticulate::py_to_r(taxonomy$is_predator)),
+    stringsAsFactors = FALSE
+  )
+}
+
+# AI-generated early implementation
+analysis_rows_with_species <- function(session = db_session) {
+  database_rows <- list(
+    analyses = fetch_analyses(session),
+    taxonomies = taxonomy_crud$select(session)
+  )
+  if (nrow(database_rows$analyses) == 0 || length(database_rows$taxonomies) == 0) {
+    return(NULL)
+  }
+
+  taxonomies <- do.call(rbind, lapply(database_rows$taxonomies, taxonomy_to_row))
+  merge(database_rows$analyses, taxonomies, by = "taxonomy_id", all = FALSE)
+}
