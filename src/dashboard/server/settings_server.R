@@ -120,9 +120,7 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
         lat = coordinates[1], lon = coordinates[2], status = status)
       cameras(dplyr::bind_rows(cameras()[!cameras()$camera_id %in% saved_id, , drop = FALSE], camera))
       if (!is.null(state)) {
-        camera_data <- update_camera_map_data(state$camera_day_logs(), state$camera_images(), camera, previous_name)
-        state$camera_day_logs(camera_data$camera_day_logs)
-        state$camera_images(camera_data$camera_images)
+        state$camera_day_logs(update_camera_map_data(state$camera_day_logs(), camera, previous_name))
         state$selected_camera_name(NULL)
       }
       showNotification("Camera saved.", type = "message")
@@ -137,7 +135,7 @@ register_settings_server <- function(input, output, session, fetch_user = fetch_
 }
 
 # Update camera locations and names without reloading their detections.
-update_camera_map_data <- function(camera_logs, camera_frames, camera, previous_name = NULL) {
+update_camera_map_data <- function(camera_logs, camera, previous_name = NULL) {
   matching_camera <- camera_logs$camera_name %in% previous_name
   if (any(matching_camera)) {
     camera_logs[matching_camera, c("camera_name", "lat", "lon")] <- camera[c("camera_name", "lat", "lon")]
@@ -146,8 +144,7 @@ update_camera_map_data <- function(camera_logs, camera_frames, camera, previous_
     camera_days[c("rat_count", "other_count", "predator_count", "predator_pressure")] <- 0
     camera_logs <- dplyr::bind_rows(camera_logs, camera_days)
   }
-  camera_frames$camera_name[camera_frames$camera_name %in% previous_name] <- camera$camera_name
-  list(camera_day_logs = camera_logs, camera_images = camera_frames)
+  camera_logs
 }
 
 # AI-Generated
