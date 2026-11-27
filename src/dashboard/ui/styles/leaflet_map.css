@@ -1,0 +1,24 @@
+.map-stage { position: relative; height: 100%; min-height: 400px; background: #10251f; container-type: inline-size; }
+#heatmap_map { height: 100%; }
+.leaflet-tile-pane { filter: saturate(var(--sat-saturation, 0.5)) contrast(var(--sat-contrast, 0.78)) brightness(1.04); }
+.heatmap-view-switcher { display: flex; gap: 4px; padding: 4px; border-radius: 10px; background: rgba(12, 14, 16, 0.82); }
+.heatmap-view-label { font-size: 0.75rem; color: rgba(255, 255, 255, 0.7); }
+.heatmap-view-button { font-weight: 600; color: #f7efe2; background: rgba(216, 197, 111, 0.2); }
+.heatmap-view-button:hover { background: rgba(216, 197, 111, 0.35); color: #f7efe2; }
+.heatmap-view-button.is-active,
+.heatmap-view-button.is-active:hover { background: #d8c56f; color: #171a16; }
+.heatmap-view-button:focus-visible { outline: 2px solid #d8c56f; outline-offset: 2px; }
+.heatmap-floating-controls { position: absolute; right: 18px; top: 18px; z-index: 710; }
+.map-control-button,
+.map-control-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; height: 44px; margin: 0; }
+.map-control-button.btn { background: rgba(255, 255, 255, 0.9); }
+.map-zoom-controls { position: absolute; right: 18px; bottom: calc(100% + 12px); z-index: 710; }
+.map-zoom-controls .map-control-button { width: 44px; padding: 0; border-radius: 50%; }
+.map-control-toggle.is-active { border-color: #245c78; }
+.map-control-button:focus-visible,
+.map-control-toggle:focus-within { outline: 2px solid #245c78; outline-offset: 2px; }
+.collapse-toggle[aria-controls="spatial_filters"][aria-expanded="false"] { visibility: hidden; }
+.map-legend-overlay { position: absolute; left: 18px; top: 18px; z-index: 700; }
+.heatmap-map-error { position: absolute; left: 50%; bottom: 170px; z-index: 720; display: flex; align-items: center; gap: 14px; max-width: calc(100% - 36px); padding: 12px 14px; transform: translateX(-50%); border-radius: 12px; background: #f8faf6; box-shadow: 0 3px 12px #10251f40; }
+.heatmap-map-error-copy { display: grid; gap: 2px; }
+.heatmap-map-error-copy span { font-size: 0.8rem; }

@@ -14,15 +14,23 @@ ENV POSTGRES_PASSWORD=sentinel_pass
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
+    libgdal-dev \
+    libgeos-dev \
     libpq-dev \
+    libproj-dev \
+    libudunits2-dev \
     python3 \
     python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
 COPY install.R /tmp/install.R
 RUN Rscript /tmp/install.R
+RUN apt-get update && apt-get install -y --no-install-recommends libpython3.10 \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY src/ /srv/shiny-server/
+WORKDIR /srv/shiny-server
+COPY pyproject.toml README.md LICENSE ./
+COPY src/dashboard/ /srv/shiny-server/dashboard/
 
 # The dashboard ORM package uses Python 3.13-only syntax (PEP 695 generics),
 # newer than the base image's system Python. Provide a real 3.13 interpreter

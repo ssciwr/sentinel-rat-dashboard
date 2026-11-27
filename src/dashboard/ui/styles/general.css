@@ -1,0 +1,7 @@
+.navbar-brand { font-weight: 600; letter-spacing: 0.02em; }
+.navbar .nav-link { display: flex; align-items: center; gap: 0.5rem; }
+.bi { flex-shrink: 0; vertical-align: -0.125em; }
+.sentinel-tour { font-family: inherit; border-radius: 10px; }
+.sentinel-tour .shepherd-button { background: var(--bs-primary); color: #10251f; }
+.sentinel-tour .shepherd-cancel-icon { color: #10251f; }
+.sentinel-tour button:focus-visible { outline: 2px solid #245c78; outline-offset: 2px; }

@@ -1,0 +1,16 @@
+@container (max-width: 600px) {
+  .map-legend-overlay { top: 74px; }
+}
+@media (max-width: 600px) {
+  .heatmap-view-switcher { width: 100%; }
+  .heatmap-view-switcher .btn-group { flex: 1; }
+  .heatmap-view-button { flex: 1; padding: 0.5rem 0.25rem; font-size: 0.75rem; }
+  .heatmap-floating-controls { right: 12px; top: 12px; }
+  .map-zoom-controls { right: 12px; }
+  .map-legend-overlay { left: 12px; top: 68px; }
+  .global-date-bar { padding: 8px 16px 6px; }
+  .timeline-date-controls { gap: 12px !important; }
+  .timeline-date-field { gap: 6px; }
+  .global-date-slider .irs-grid-text { font-size: 10px; }
+  .inspector-panel { left: 12px !important; right: 12px !important; top: 50% !important; width: auto; transform: translateY(-50%); }
+}

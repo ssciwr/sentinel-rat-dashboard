@@ -8,6 +8,16 @@ Work in progress...
 
 R Shiny application for browsing animal detection results from PostgreSQL (PostGIS).
 
+The data is rendered for all visitors. Visitors can create an account by clicking "Settings" --> "Register".
+They can also log in from the settings menu, if they already have an account.
+
+When logged in, as a user you can update or edit cameras.
+
+So still todo is to decide whether we keep a public registration, or create accounts manually with a CLI for that on the server and then
+share log in details to trusted users, since right now all users can edit all cameras in the viewer system.
+Since editing the camera lat/lon affects the data pipeline, it's quite important to decide how that works.
+
+
 ## Scaffolded code
 
 * Initialize a PostgreSQL database with PostGIS extension
@@ -62,7 +72,7 @@ Methods implemented in the CRUD classes are summarized in the following table:
 | ObjectDetectionCRUD | ✓ | . | . | . | x | . |  |
 | TaxonomyCRUD | . | . | . | . | . | . |  |
 | SpeciesClassificationCRUD | ✓ | . | . | . | x | . |  |
-| AppUserCRUD | ✓ | . | . | . | ✓ | . |  |
+| AppUserCRUD | ✓ | . | . | . | ✓ | . | `get_login`, `set_password` |
 | DetectionCorrectionCRUD | ✓ | . | . | . | ✓ | ✓ |  |
 | ClassificationCorrectionCRUD | ✓ | . | . | . | ✓ | ✓ |  |
 | DailyAnalysisResultCRUD | . | . | . | . | . | . | `compute_daily_results`,<br> `pending_days`,<br> `recompute_for_image`,<br> `recompute_all`,<br> `commit_with_recompute` |
@@ -182,6 +192,7 @@ Initialize the database schema:
 ```bash
 python src/dashboard/init_db.py
 ```
+
 
 Finally, run the R tests:
 ```bash

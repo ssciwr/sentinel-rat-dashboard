@@ -1,5 +1,14 @@
-install.packages(c(
+AUTH_PACKAGES <- c("shinymanager", "scrypt")
+CRAN_REPOSITORY <- "https://cran.r-project.org"
+
+packages <- c(
   "shiny",
+  "conductor",
+  AUTH_PACKAGES,
+   "bslib",
+"leaflet",
+    "plotly",
+  "scales",
   "RPostgres",
   "DBI",
   "dplyr",
@@ -9,4 +18,13 @@ install.packages(c(
   "covr",
   "xml2",
   "reticulate"
-), repos = "https://cloud.r-project.org")
+)
+package_repositories <- getOption("repos", c(CRAN = CRAN_REPOSITORY))
+package_repositories[package_repositories == "@CRAN@"] <- CRAN_REPOSITORY
+
+install.packages(
+  setdiff(packages, AUTH_PACKAGES),
+  repos = package_repositories
+)
+install.packages(AUTH_PACKAGES, repos = CRAN_REPOSITORY)
+

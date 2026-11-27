@@ -1,0 +1,141 @@
+      .annotation-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 3000;
+        display: none;
+        background: rgba(13, 24, 30, 0.94);
+      }
+      .annotation-modal.is-open {
+        display: flex;
+      }
+      .annotation-modal-shell {
+        width: 100%;
+        min-height: 100%;
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr);
+      }
+      .annotation-toolbar {
+        display: grid;
+        grid-template-columns: minmax(180px, 1fr) 44px 44px minmax(180px, 360px) auto 44px;
+        gap: 10px;
+        align-items: center;
+        padding: 12px 14px;
+        background: #ffffff;
+      }
+      .annotation-identity {
+        min-width: 0;
+        display: grid;
+        gap: 3px;
+      }
+      .annotation-title {
+        min-width: 0;
+        overflow: hidden;
+        color: #26323d;
+        font-size: 14px;
+        font-weight: 700;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .annotation-frame-id {
+        min-width: 0;
+        overflow: hidden;
+        color: #60736a;
+        font-family: monospace;
+        font-size: 12px;
+        font-weight: 700;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .annotation-toolbar select {
+        height: 44px;
+        border: 1px solid rgba(96, 115, 106, 0.24);
+        border-radius: 7px;
+        background: #f7f9fa;
+        color: #26323d;
+        font-size: 15px;
+      }
+      .annotation-round-button.btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border: 1px solid rgba(96, 115, 106, 0.28);
+        border-radius: 50%;
+        background: #ffffff;
+        color: #60736a;
+        font-size: 16px;
+        box-shadow: 0 1px 5px rgba(38, 50, 61, 0.12);
+      }
+      .annotation-round-button.btn:hover,
+      .annotation-round-button.btn:focus {
+        border-color: rgba(63, 139, 209, 0.34);
+        background: #eef5fc;
+        color: #2f78ba;
+        outline: none;
+      }
+      .annotation-status {
+        min-height: 28px;
+        padding: 6px 12px;
+        background: #eef2f5;
+        color: #687987;
+        font-size: 12px;
+      }
+      .annotation-stage {
+        position: relative;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px;
+      }
+      .annotation-stage img {
+        max-width: calc(100vw - 24px);
+        max-height: calc(100vh - 116px);
+        background: #172826;
+      }
+      .annotation-stage .a9s-annotation.selected .a9s-inner,
+      .annotation-stage .a9s-selection .a9s-inner {
+        fill: rgba(255, 255, 255, 0.4);
+        stroke: rgba(155, 18, 48, 0.7);
+        stroke-width: 4px;
+      }
+      .annotation-action-badge {
+        position: fixed;
+        z-index: 3300;
+        display: none;
+        min-width: 30px;
+        min-height: 28px;
+        padding: 4px 10px;
+        border: 1px solid rgba(155, 18, 48, 0.28);
+        border-radius: 7px;
+        background: rgba(245, 231, 234, 0.8);
+        color: #9b1230;
+        cursor: pointer;
+        font-weight: 800;
+        line-height: 18px;
+      }
+      .annotation-action-badge.is-visible {
+        display: block;
+      }
+      .annotation-action-badge.is-update,
+      .annotation-action-badge.is-confirm {
+        border-color: rgba(63, 139, 209, 0.34);
+        background: rgba(238, 245, 252, 0.8);
+        color: #2f78ba;
+        font-weight: 700;
+      }
+      .annotation-action-badge.is-incorrect {
+        border-color: rgba(155, 18, 48, 0.28);
+        background: rgba(245, 231, 234, 0.8);
+        color: #9b1230;
+      }
+      @media (max-width: 900px) {
+        .annotation-toolbar {
+          grid-template-columns: minmax(0, 1fr) 40px 40px 40px;
+        }
+        .annotation-toolbar select {
+          grid-column: 1 / -1;
+        }
+      }
