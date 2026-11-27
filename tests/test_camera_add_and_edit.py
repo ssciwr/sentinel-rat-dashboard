@@ -19,7 +19,6 @@ def test_save_camera_creates_history(get_session, description):
     assert len(histories(get_session, camera.id)) == 1
 
 
-
 @pytest.mark.parametrize(
     "name,lat,lon",
     [
@@ -77,6 +76,7 @@ def test_omitted_status_preserves_existing_status(get_session, status):
     assert updated.id == camera.id
     assert updated.status == status
     assert len(histories(get_session, camera.id)) == 1
+
 
 def test_status_change_preserves_camera_history(get_session, created_camera):
     camera = created_camera()

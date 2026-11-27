@@ -79,7 +79,9 @@ def _image_detections(
 
 def load_annotation_data(session: Session, camera_id: int, day: str) -> AnnotationData:
     # Get the image and detection annotations (bbox + class) for a given day
-    start, end = day_bounds(date.fromisoformat(day)) # Match DB format, no real better R type for this without extra boilerplate
+    start, end = day_bounds(
+        date.fromisoformat(day)
+    )  # Match DB format, no real better R type for this without extra boilerplate
     taxonomies = {
         taxonomy.id: _species_label(taxonomy)
         for taxonomy in session.scalars(select(Taxonomy))

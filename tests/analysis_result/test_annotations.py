@@ -9,9 +9,9 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from dashboard.db.analysis_result import DeletedImagesError, daily_analysis_result_crud
 from dashboard.db.annotation_data import load_annotation_data
 from dashboard.db.annotations import save_annotation
-from dashboard.db.analysis_result import DeletedImagesError, daily_analysis_result_crud
 from dashboard.db.data_model import ClassificationCorrection, DetectionCorrection
 
 from .helpers import BBOX, DAY, add_detection, add_image, at, compute, daily_results
